@@ -39,6 +39,6 @@ Set runtime Firebase identifiers to enable production sign-in; Google Photos req
 
 ## Media and licenses
 
-Downloaded clothing/editorial images are stored locally in `public/images`; source pages, authors and Unsplash License links are recorded in [image-credits.json](public/image-credits.json). They are illustrative sample media, not merchandise offered by the depicted brands. Original fallback garment illustrations and the sample 3D mannequin are CC0. The mannequin does not represent any customer. No generative paid service outside Google Cloud is required.
+Downloaded clothing/editorial images are stored locally in `public/images`; source pages, authors and Unsplash/Pexels license links are recorded in [image-credits.json](public/image-credits.json). They are illustrative sample media, not merchandise offered by the depicted brands. Original fallback garment illustrations and the sample 3D mannequin are CC0. The mannequin does not represent any customer. No generative paid service outside Google Cloud is required.
 
 [Backend documentation](https://github.com/samwin-steve/Flairify-Backend/tree/main/docs) includes architecture, integration setup, limitations, 3D research, deployment, evaluation, demo script and submission material.
