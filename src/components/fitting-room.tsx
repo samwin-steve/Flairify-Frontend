@@ -69,7 +69,7 @@ function ModelViewer() {
           ar-modes="webxr scene-viewer quick-look"
           shadow-intensity="1"
           exposure="1.1"
-          camera-orbit="25deg 85deg 3m"
+          camera-orbit="25deg 85deg 105%"
           touch-action="pan-y"
           style={{
             width: "100%",
@@ -91,7 +91,7 @@ function ModelViewer() {
       ) : (
         <p className="fine-print">
           {ar
-            ? "Your device supports AR placement."
+            ? "Try AR placement on this device. Availability depends on the browser and installed viewer."
             : "AR is unavailable on this device. Drag to rotate the 3D form; pinch or scroll to zoom."}
         </p>
       )}
