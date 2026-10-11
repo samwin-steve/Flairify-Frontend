@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, WandSparkles, MapPin, ShoppingBag, Plus } from "lucide-react";
 import { api } from "@/lib/api";
@@ -12,11 +12,37 @@ export function Inventory({
   onTryOn,
   onBuy,
   onSell,
+  onSetup,
+  onReference,
+  onSignIn,
 }: {
-  onTryOn: (product: Product) => void;
+  onTryOn: (product: Product) => Promise<void>;
+  onSetup: () => void;
+  onReference: () => void;
+  onSignIn?: () => void;
   onBuy: (product: Product) => void;
   onSell: () => void;
 }) {
+  const [previewError, setPreviewError] = useState<{
+    id: string;
+    message: string;
+  } | null>(null);
+  const [generating, setGenerating] = useState("");
+  const lock = useRef(false);
+  async function generate(product: Product) {
+    if (lock.current) return;
+    lock.current = true;
+    setGenerating(product.id);
+    setPreviewError(null);
+    try {
+      await onTryOn(product);
+    } catch (e) {
+      setPreviewError({ id: product.id, message: (e as Error).message });
+    } finally {
+      setGenerating("");
+      lock.current = false;
+    }
+  }
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [department, setDepartment] = useState("");
@@ -192,14 +218,43 @@ export function Inventory({
                 </Button>
                 <Button
                   variant="outline"
-                  disabled={!variants.length || !p.try_on_supported}
-                  onClick={() => onTryOn(p)}
+                  disabled={
+                    !!generating || !variants.length || !p.try_on_supported
+                  }
+                  onClick={() => generate(p)}
                 >
                   <WandSparkles size={16} />
-                  {p.try_on_supported
-                    ? "Try this on"
-                    : "Preview unavailable for this item"}
+                  {generating === p.id
+                    ? "Starting preview…"
+                    : p.try_on_supported
+                      ? "Try this on"
+                      : "Preview unavailable for this item"}
                 </Button>
+                {previewError?.id === p.id && (
+                  <div className="notice">
+                    <p className="error" role="alert">
+                      {previewError.message}
+                    </p>
+                    {onSignIn ? (
+                      <Button size="sm" onClick={onSignIn}>
+                        Sign in for real previews
+                      </Button>
+                    ) : (
+                      <div className="button-row">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={onReference}
+                        >
+                          Manage reference photos
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={onSetup}>
+                          Open Profile settings
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </article>
           );

@@ -121,6 +121,16 @@ export interface Job {
     product_image?: string;
     provider?: string;
     sample_product?: boolean;
+    keep_background?: boolean;
+    pieces?: {
+      kind: "product" | "wardrobe";
+      id: string;
+      name: string;
+      category: string;
+      image: string;
+      sample: boolean;
+    }[];
+    selection_adjustments?: string[];
   } | null;
   created_at: string;
   updated_at: string;
@@ -135,6 +145,7 @@ export interface Profile {
   budget: number;
   consent: { remember_preferences: boolean; ai_photo_processing: boolean };
   onboarding_complete: boolean;
+  keep_background?: boolean;
   admin?: boolean;
   seller?: boolean;
   demo?: boolean;

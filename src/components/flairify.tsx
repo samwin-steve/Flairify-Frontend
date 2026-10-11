@@ -78,7 +78,15 @@ import { Admin } from "./admin";
 import { Inventory } from "./inventory";
 import { Checkout, Orders } from "./checkout";
 import { ShoppingBag, Store as SellerIcon } from "lucide-react";
-import { TryOnDialog } from "./try-on-dialog";
+import {
+  pieceKey,
+  productPiece,
+  wardrobePiece,
+  togglePiece,
+  selections,
+  type PreviewPiece,
+  type PreviewSelection,
+} from "@/lib/try-on-selection";
 
 const navigation = [
   { id: "stylist", label: "Stylist", icon: Sparkles },
@@ -132,6 +140,7 @@ function Application() {
   const [session, setSession] = useState(false);
   const [boot, setBoot] = useState(true);
   const [page, setPage] = useState("stylist");
+  const [referenceTab, setReferenceTab] = useState(false);
   const [onboarding, setOnboarding] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [details, setDetails] = useState(false);
@@ -145,10 +154,8 @@ function Application() {
   const [convoId, setConvoId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [storeId, setStoreId] = useState("");
-  const [tryOn, setTryOn] = useState<{
-    products: Product[];
-    id?: string;
-  } | null>(null);
+  const previewLock = useRef(false);
+  const previewKeys = useRef(new Map<string, string>());
   const [checkout, setCheckout] = useState<{
     products: Product[];
     id?: string;
@@ -280,8 +287,13 @@ function Application() {
   const summaryLook = activeLook || latestOutfits[0];
   function changePage(id: string) {
     setPage(id);
+    setReferenceTab(false);
     setMobileMenu(false);
     setError("");
+  }
+  function manageReferences() {
+    changePage("fitting");
+    setReferenceTab(true);
   }
   function refresh() {
     qc.invalidateQueries({ queryKey: ["wardrobe"] });
@@ -338,6 +350,7 @@ function Application() {
     setDepartment("all");
     setSession(false);
     setCheckout(null);
+    previewKeys.current.clear();
     setOnboarding(false);
     setMessages([]);
     setConvoId(null);
@@ -397,8 +410,50 @@ function Application() {
       setToast("A good look, saved for later.");
     });
   }
-  function openTryOn(outfit: { products: Product[]; id?: string }) {
-    setTryOn(outfit);
+  async function requestTryOn(selected: PreviewSelection[], outfitId?: string) {
+    if (!selected.length) throw new Error("Select at least one garment first.");
+    if (profile.data?.demo)
+      throw new Error(
+        "Sign in to use your own photo for Google AI previews. The sample demo does not generate personal images.",
+      );
+    if (!profile.data?.consent.ai_photo_processing)
+      throw new Error(
+        "Allow Google AI photo processing in Profile before generating your preview.",
+      );
+    if (!config.data?.try_on)
+      throw new Error(
+        "Google image generation is unavailable in this environment.",
+      );
+    if (previewLock.current)
+      throw new Error("Your preview request is already being sent.");
+    previewLock.current = true;
+    const fingerprint = JSON.stringify([
+      outfitId,
+      selected,
+      profile.data?.keep_background,
+    ]);
+    const key = previewKeys.current.get(fingerprint) || crypto.randomUUID();
+    previewKeys.current.set(fingerprint, key);
+    try {
+      await post("/generate/try_on", {
+        selections: selected,
+        outfit_id: outfitId,
+        request_key: key,
+      });
+      previewKeys.current.delete(fingerprint);
+      await qc.invalidateQueries({ queryKey: ["jobs"] });
+      changePage("fitting");
+      setToast(
+        "Your selected look is being generated. You can return to it in Fitting Room.",
+      );
+    } finally {
+      previewLock.current = false;
+    }
+  }
+  async function signInForPreview() {
+    await logout();
+    setRegister(true);
+    setAuthOpen(true);
   }
   async function nearby() {
     if (!navigator.geolocation) {
@@ -1055,7 +1110,17 @@ function Application() {
                                 !!saved.data?.looks.some((s) => s.id === o.id)
                               }
                               onSave={() => saveLook(o)}
-                              onTryOn={() => openTryOn(o)}
+                              onTryOn={(selected) =>
+                                requestTryOn(selected, o.id)
+                              }
+                              keepBackground={!!profile.data?.keep_background}
+                              onSetup={() => changePage("profile")}
+                              onReference={manageReferences}
+                              onSignIn={
+                                profile.data?.demo
+                                  ? signInForPreview
+                                  : undefined
+                              }
                               onBuy={() => setCheckout(o)}
                               onSelect={() => {
                                 setActiveLook(o);
@@ -1303,7 +1368,15 @@ function Application() {
                           qc.invalidateQueries({ queryKey: ["saved"] });
                         })
                       }
-                      onTryOn={() => openTryOn(s.outfit)}
+                      onTryOn={(selected) =>
+                        requestTryOn(selected, s.outfit.id)
+                      }
+                      keepBackground={!!profile.data?.keep_background}
+                      onSetup={() => changePage("profile")}
+                      onReference={manageReferences}
+                      onSignIn={
+                        profile.data?.demo ? signInForPreview : undefined
+                      }
                       onBuy={() => setCheckout(s.outfit)}
                       onSelect={() => {
                         setActiveLook(s.outfit);
@@ -1322,7 +1395,10 @@ function Application() {
         )}
         {page === "inventory" && (
           <Inventory
-            onTryOn={(p) => openTryOn({ products: [p] })}
+            onTryOn={(p) => requestTryOn(selections([productPiece(p)]))}
+            onSetup={() => changePage("profile")}
+            onReference={manageReferences}
+            onSignIn={profile.data?.demo ? signInForPreview : undefined}
             onBuy={(p) => setCheckout({ products: [p] })}
             onSell={() => changePage("admin")}
           />
@@ -1330,6 +1406,8 @@ function Application() {
         {page === "orders" && <Orders onShop={() => changePage("inventory")} />}
         {page === "fitting" && (
           <FittingRoom
+            key={referenceTab ? "references" : "previews"}
+            showReferences={referenceTab}
             onShop={() => changePage("inventory")}
             onWardrobe={() => changePage("wardrobe")}
           />
@@ -1355,10 +1433,7 @@ function Application() {
                     Google sign-in and Google Photos permissions are separate.
                     You choose what to share.
                   </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => changePage("fitting")}
-                  >
+                  <Button variant="outline" onClick={manageReferences}>
                     Manage reference photos
                   </Button>
                   <Button
@@ -1509,25 +1584,6 @@ function Application() {
           }}
         />
       )}
-      {tryOn && config.data && profile.data && (
-        <TryOnDialog
-          products={tryOn.products}
-          outfitId={tryOn.id}
-          config={config.data}
-          profile={profile.data}
-          onClose={() => setTryOn(null)}
-          onQueued={() => {
-            setTryOn(null);
-            changePage("fitting");
-          }}
-          onSignIn={async () => {
-            setTryOn(null);
-            await logout();
-            setRegister(true);
-            setAuthOpen(true);
-          }}
-        />
-      )}
       {addPhotos && config.data && (
         <Modal
           open
@@ -1574,15 +1630,66 @@ function LookCard({
   onTryOn,
   onBuy,
   onSelect,
+  keepBackground,
+  onSetup,
+  onReference,
+  onSignIn,
 }: {
   outfit: Outfit;
   index: number;
   isSaved: boolean;
   onSave: () => void;
-  onTryOn: () => void;
+  onTryOn: (selected: PreviewSelection[]) => Promise<void>;
   onBuy: () => void;
   onSelect: () => void;
+  keepBackground: boolean;
+  onSetup: () => void;
+  onReference: () => void;
+  onSignIn?: () => void;
 }) {
+  const [selected, setSelected] = useState<PreviewPiece[]>([]);
+  const [notice, setNotice] = useState("");
+  const [previewError, setPreviewError] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const lock = useRef(false);
+  function toggle(piece: PreviewPiece) {
+    const next = togglePiece(selected, piece);
+    setSelected(next.selected);
+    setPreviewError("");
+    setNotice(
+      next.removed.length
+        ? `${piece.name} replaces ${next.removed.map((p) => p.name).join(" and ")}. One piece per clothing slot.`
+        : "",
+    );
+  }
+  async function generate() {
+    if (lock.current || !selected.length) return;
+    lock.current = true;
+    setGenerating(true);
+    setPreviewError("");
+    try {
+      await onTryOn(selections(selected));
+    } catch (e) {
+      setPreviewError((e as Error).message);
+    } finally {
+      setGenerating(false);
+      lock.current = false;
+    }
+  }
+  function checkbox(piece: PreviewPiece) {
+    return (
+      <label className="piece-select">
+        <input
+          type="checkbox"
+          checked={selected.some((p) => pieceKey(p) === pieceKey(piece))}
+          disabled={generating || !piece.available}
+          onChange={() => toggle(piece)}
+          aria-label={`Try on ${piece.name}`}
+        />
+        {piece.available ? "Include in preview" : "Photo or stock unavailable"}
+      </label>
+    );
+  }
   return (
     <article className="look-card">
       <div className="look-heading">
@@ -1609,6 +1716,7 @@ function LookCard({
               <span className="piece-label owned">Owned</span>
             </div>
             <strong>{w.name}</strong>
+            {checkbox(wardrobePiece(w))}
             <span>
               Already yours{w.generated_image ? " · AI-generated image" : ""}
             </span>
@@ -1623,11 +1731,53 @@ function LookCard({
               </span>
             </div>
             <strong>{p.name}</strong>
+            {checkbox(productPiece(p))}
             <span>
               {money(p.price)} · {p.availability?.size}
             </span>
           </div>
         ))}
+      </div>
+      <div className="preview-selection-info">
+        <p>
+          {selected.length
+            ? `${selected.length} selected for your preview.`
+            : "Tick the garments you want to try on."}{" "}
+          Compatible pieces are combined in one image.
+        </p>
+        <p className="fine-print">
+          {keepBackground
+            ? "Keep your photo’s background"
+            : "Plain white background"}{" "}
+          ·{" "}
+          <button className="text-link" onClick={onSetup}>
+            Change in Profile
+          </button>
+        </p>
+        {notice && <p role="status">{notice}</p>}
+        {previewError && (
+          <div className="notice">
+            <p role="alert" className="error">
+              {previewError}
+            </p>
+            <div className="button-row">
+              {onSignIn ? (
+                <Button size="sm" onClick={onSignIn}>
+                  Sign in for real previews
+                </Button>
+              ) : (
+                <>
+                  <Button size="sm" variant="outline" onClick={onReference}>
+                    Manage reference photos
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={onSetup}>
+                    Open Profile settings
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
       <div className="look-explanation">
         <span className="tiny-star">✧</span>
@@ -1647,11 +1797,15 @@ function LookCard({
         <Button
           size="sm"
           variant="outline"
-          onClick={onTryOn}
-          disabled={!outfit.products.length}
+          onClick={generate}
+          disabled={!selected.length || generating}
         >
-          <WandSparkles size={15} />
-          See it on me
+          {generating ? (
+            <LoaderCircle size={15} className="spin" />
+          ) : (
+            <WandSparkles size={15} />
+          )}
+          {generating ? "Starting preview…" : "See it on me"}
         </Button>
         <Button
           size="sm"

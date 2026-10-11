@@ -40,6 +40,7 @@ const profileSchema = z.object({
   budget: z.coerce.number().min(0).max(1000000),
   remember: z.boolean(),
   processing: z.boolean(),
+  keep_background: z.boolean(),
 });
 type Basics = z.infer<typeof profileSchema>;
 export function ProfileForm({
@@ -62,6 +63,7 @@ export function ProfileForm({
       budget: profile.budget,
       remember: profile.consent.remember_preferences,
       processing: profile.consent.ai_photo_processing,
+      keep_background: profile.keep_background ?? false,
     },
   });
   async function submit(data: Basics) {
@@ -78,6 +80,7 @@ export function ProfileForm({
       );
       await put("/profile", {
         name: data.name,
+        keep_background: data.keep_background,
         styles,
         colours: [],
         clothing_size: data.clothing_size,
@@ -172,6 +175,17 @@ export function ProfileForm({
           />
         </div>
       </div>
+      <div className="background-preference">
+        <label className="check-line">
+          <input type="checkbox" {...form.register("keep_background")} />
+          Keep my generated outfits in the same background
+        </label>
+        <p className="fine-print">
+          Checked: keep the background from your reference photo. Unchecked: use
+          a plain white background. Saved for future previews; you can change
+          this in Profile.
+        </p>
+      </div>
       <label className="check-line">
         <input type="checkbox" {...form.register("remember")} />
         Remember my preferences for future visits
@@ -179,7 +193,8 @@ export function ProfileForm({
       <label className="check-line">
         <input type="checkbox" {...form.register("processing")} />I agree to
         process my selected photos with Google Cloud AI to identify clothes and
-        create shop-style garment images when connected
+        create shop-style garment images and requested outfit previews when
+        connected
       </label>
       <p className="fine-print">
         Sizes come from you. Photos do not give us accurate body measurements.

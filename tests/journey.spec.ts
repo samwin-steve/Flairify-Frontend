@@ -10,6 +10,12 @@ test("wardrobe-first journey, budget, saved look, sign-in-required try-on and re
   ).toBeVisible();
   await page.getByRole("button", { name: "Explore sample demo" }).click();
   await page.getByLabel("What should we call you?").fill("Asha");
+  await expect(
+    page.getByLabel("Keep my generated outfits in the same background"),
+  ).not.toBeChecked();
+  await page
+    .getByLabel("Keep my generated outfits in the same background")
+    .check();
   await page.getByLabel("Clothing size", { exact: true }).selectOption("M");
   await page.getByLabel("Shoe size (EU)").selectOption("39");
   await page.getByRole("button", { name: "Save and continue" }).click();
@@ -59,14 +65,17 @@ test("wardrobe-first journey, budget, saved look, sign-in-required try-on and re
   await expect(
     page.getByRole("status").filter({ hasText: "saved for later" }),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "See it on me", exact: true })
-    .first()
-    .click();
+  const look = page.locator(".look-card").first();
+  await expect(
+    look.getByRole("button", { name: "See it on me", exact: true }),
+  ).toBeDisabled();
+  await expect(look.locator('input[type="checkbox"]:checked')).toHaveCount(0);
+  await look.getByRole("checkbox").first().check();
+  await look.getByRole("button", { name: "See it on me", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Sign in for real previews" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Close dialog" }).click();
   await page
     .getByRole("button", { name: "Mock buy new pieces", exact: true })
     .first()
@@ -251,7 +260,7 @@ test("inventory lists available products and requests sign-in for real previews"
   await expect(
     page.getByRole("button", { name: "Sign in for real previews" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Close dialog" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

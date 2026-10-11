@@ -123,12 +123,16 @@ function ModelViewer() {
 export function FittingRoom({
   onShop,
   onWardrobe,
+  showReferences = false,
 }: {
+  showReferences?: boolean;
   onShop: () => void;
   onWardrobe: () => void;
 }) {
   const qc = useQueryClient();
-  const [tab, setTab] = useState<"previews" | "references" | "3d">("previews");
+  const [tab, setTab] = useState<"previews" | "references" | "3d">(
+    showReferences ? "references" : "previews",
+  );
   const [error, setError] = useState("");
   const jobs = useQuery({
     queryKey: ["jobs"],
@@ -264,7 +268,7 @@ export function FittingRoom({
                       </figure>
                     </div>
                   ))}
-                {j.result?.product_name && (
+                {!j.result?.pieces?.length && j.result?.product_name && (
                   <p>
                     <strong>{j.result.product_name}</strong>
                     {j.result.sample_product
@@ -272,6 +276,35 @@ export function FittingRoom({
                       : ""}
                   </p>
                 )}
+                {!!j.result?.pieces?.length && (
+                  <div className="preview-used-pieces">
+                    <h4>Included in this preview</h4>
+                    <ul>
+                      {j.result.pieces.map((piece) => (
+                        <li key={piece.kind + piece.id}>
+                          {piece.name} ·{" "}
+                          {piece.kind === "wardrobe" ? "Owned" : "New"}
+                          {piece.sample ? " · Sample" : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {j.kind === "try_on" &&
+                  j.result?.keep_background !== undefined && (
+                    <p className="fine-print">
+                      Background requested:{" "}
+                      {j.result.keep_background
+                        ? "same as your photo"
+                        : "plain white"}
+                      . Regenerate uses your current Profile setting.
+                    </p>
+                  )}
+                {j.result?.selection_adjustments?.map((message, index) => (
+                  <p className="fine-print" key={index}>
+                    {message}
+                  </p>
+                ))}
                 {j.result?.label && (
                   <p className="fine-print">{j.result.label}</p>
                 )}
