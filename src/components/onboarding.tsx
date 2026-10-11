@@ -17,7 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { api, post, put, del, uploadPhoto } from "@/lib/api";
-import { pollingMilliseconds } from "@/lib/utils";
+import { pollingMilliseconds, CLOTHING_SIZES, SHOE_SIZES } from "@/lib/utils";
 import type {
   Box,
   Config,
@@ -140,7 +140,7 @@ export function ProfileForm({
           <label htmlFor="size">Clothing size</label>
           <select id="size" {...form.register("clothing_size")}>
             <option value="">Skip for now</option>
-            {["XS", "S", "M", "L", "XL", "XXL"].map((s) => (
+            {CLOTHING_SIZES.map((s) => (
               <option key={s}>{s}</option>
             ))}
           </select>
@@ -149,7 +149,7 @@ export function ProfileForm({
           <label htmlFor="shoes">Shoe size (EU)</label>
           <select id="shoes" {...form.register("shoe_size")}>
             <option value="">Skip for now</option>
-            {[35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45].map((s) => (
+            {SHOE_SIZES.map((s) => (
               <option key={s}>{s}</option>
             ))}
           </select>

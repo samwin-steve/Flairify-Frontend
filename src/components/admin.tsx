@@ -256,7 +256,10 @@ export function Admin({
         </p>
       )}
       <div className="button-row">
-        <Button onClick={addProduct} disabled={busy}>
+        <Button
+          onClick={addProduct}
+          disabled={busy || data.isLoading || !data.data}
+        >
           <Plus size={17} />
           Add clothes
         </Button>
@@ -637,6 +640,23 @@ function ProductEditor({
                     {c}
                   </option>
                 ))}
+              </select>
+            </label>
+            <label className="field">
+              Department
+              <select
+                value={p.attributes.department || ""}
+                onChange={(e) =>
+                  setP({
+                    ...p,
+                    attributes: { ...p.attributes, department: e.target.value },
+                  })
+                }
+              >
+                <option value="">Not specified</option>
+                <option value="women">Women</option>
+                <option value="men">Men</option>
+                <option value="unisex">Unisex</option>
               </select>
             </label>
             <label className="field">

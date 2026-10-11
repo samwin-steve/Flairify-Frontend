@@ -47,7 +47,7 @@ import {
   X,
 } from "lucide-react";
 import { api, post, del } from "@/lib/api";
-import { money } from "@/lib/utils";
+import { money, CLOTHING_SIZES, SHOE_SIZES } from "@/lib/utils";
 import type {
   Config,
   Conversation,
@@ -156,6 +156,7 @@ function Application() {
   const [activeLook, setActiveLook] = useState<Outfit | null>(null);
   const [clothingSize, setClothingSize] = useState("");
   const [shoeSize, setShoeSize] = useState("");
+  const [department, setDepartment] = useState("all");
   const [toast, setToast] = useState("");
   const [addPhotos, setAddPhotos] = useState(false);
   const [filter, setFilter] = useState("all");
@@ -168,6 +169,7 @@ function Application() {
   useEffect(() => {
     const existing = localStorage.getItem("flairify-token");
     setSession(!!existing);
+    setDepartment(sessionStorage.getItem("flairify-department") || "all");
     const sizes = sessionStorage.getItem("flairify-sizes");
     if (sizes) {
       try {
@@ -332,6 +334,8 @@ function Application() {
     if (getApps().length) await signOut(getAuth());
     localStorage.removeItem("flairify-token");
     sessionStorage.removeItem("flairify-sizes");
+    sessionStorage.removeItem("flairify-department");
+    setDepartment("all");
     setSession(false);
     setCheckout(null);
     setOnboarding(false);
@@ -367,6 +371,7 @@ function Application() {
         store_id: storeId || null,
         clothing_size: clothingSize || null,
         shoe_size: shoeSize || null,
+        department,
       });
       setConvoId(result.conversation.id);
       setMessages(result.conversation.messages);
@@ -787,7 +792,10 @@ function Application() {
           <div key={w.id} className="mini-garment">
             <Media src={w.generated_image || w.image} alt={w.name} />
             <strong>{w.name}</strong>
-            <small>{w.colour}{w.generated_image ? " · AI-generated image" : ""}</small>
+            <small>
+              {w.colour}
+              {w.generated_image ? " · AI-generated image" : ""}
+            </small>
           </div>
         ))}
       </div>
@@ -1084,9 +1092,26 @@ function Application() {
                     ))}
                   </div>
                 )}
-                {ready && (!clothingSize || !shoeSize) && (
+                {ready && (
                   <div className="size-followup">
-                    <span>Which sizes should I check?</span>
+                    <label>
+                      Shop
+                      <select
+                        value={department}
+                        onChange={(e) => {
+                          setDepartment(e.target.value);
+                          sessionStorage.setItem(
+                            "flairify-department",
+                            e.target.value,
+                          );
+                        }}
+                      >
+                        <option value="all">All departments</option>
+                        <option value="women">Women + unisex</option>
+                        <option value="men">Men + unisex</option>
+                        <option value="unisex">Unisex</option>
+                      </select>
+                    </label>
                     <label>
                       Clothing
                       <select
@@ -1103,7 +1128,7 @@ function Application() {
                         }}
                       >
                         <option value="">Select</option>
-                        {["XS", "S", "M", "L", "XL"].map((s) => (
+                        {CLOTHING_SIZES.map((s) => (
                           <option key={s}>{s}</option>
                         ))}
                       </select>
@@ -1124,11 +1149,9 @@ function Application() {
                         }}
                       >
                         <option value="">Select</option>
-                        {[35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45].map(
-                          (s) => (
-                            <option key={s}>{s}</option>
-                          ),
-                        )}
+                        {SHOE_SIZES.map((s) => (
+                          <option key={s}>{s}</option>
+                        ))}
                       </select>
                     </label>
                   </div>
@@ -1586,7 +1609,9 @@ function LookCard({
               <span className="piece-label owned">Owned</span>
             </div>
             <strong>{w.name}</strong>
-            <span>Already yours{w.generated_image ? " · AI-generated image" : ""}</span>
+            <span>
+              Already yours{w.generated_image ? " · AI-generated image" : ""}
+            </span>
           </div>
         ))}
         {outfit.products.map((p) => (

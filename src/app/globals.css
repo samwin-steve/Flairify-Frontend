@@ -3166,7 +3166,7 @@ svg {
 /* Inventory and 2D preview inputs */
 .inventory-filters {
   display: grid;
-  grid-template-columns: minmax(180px, 2fr) minmax(130px, 1fr) auto;
+  grid-template-columns: minmax(180px, 2fr) repeat(2, minmax(130px, 1fr));
   gap: 18px;
   align-items: end;
   margin: 24px 0 18px;
@@ -3508,7 +3508,45 @@ svg {
 }
 
 /* Keep the generated illustration next to its original evidence in garment review. */
-.garment-evidence { min-width: 0; }
-.garment-evidence figure { margin: 0 0 16px; }
-.garment-evidence .editor-image { width: 100%; height: auto; max-height: 270px; object-fit: contain; background: #fff; }
-.garment-evidence figcaption { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.garment-evidence {
+  min-width: 0;
+}
+.garment-evidence figure {
+  margin: 0 0 16px;
+}
+.garment-evidence .editor-image {
+  width: 100%;
+  height: auto;
+  max-height: 270px;
+  object-fit: contain;
+  background: #fff;
+}
+.garment-evidence figcaption {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.catalog-load-more {
+  padding: 28px 0;
+  text-align: center;
+}
+.inventory-card .eyebrow {
+  overflow-wrap: anywhere;
+}
+.inventory-card .section-line {
+  gap: 10px;
+}
+.size-followup select {
+  min-height: 36px;
+  max-width: 100%;
+}
+@media (max-width: 600px) {
+  .size-followup {
+    font-size: 11px;
+  }
+  .size-followup label:first-child {
+    width: 100%;
+  }
+}

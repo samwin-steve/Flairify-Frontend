@@ -244,8 +244,8 @@ test("inventory lists available products and requests sign-in for real previews"
     .getByRole("button", { name: "Inventory", exact: true })
     .filter({ visible: true })
     .click();
-  await expect(page.locator(".inventory-card")).toHaveCount(9);
-  await page.getByLabel("Search inventory").fill("white shirt");
+  await expect(page.locator(".inventory-card")).toHaveCount(24);
+  await page.getByLabel("Search inventory").fill("A fresh white shirt");
   await expect(page.locator(".inventory-card")).toHaveCount(1);
   await page.getByRole("button", { name: "Try this on", exact: true }).click();
   await expect(

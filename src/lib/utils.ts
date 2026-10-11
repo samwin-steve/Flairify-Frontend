@@ -11,3 +11,18 @@ export const terminal = (status: string) =>
   ["succeeded", "failed", "cancelled"].includes(status);
 export const pollingMilliseconds = (duration: string) =>
   Math.max(1000, Number.parseFloat(duration) * 1000 || 5000);
+
+export const CLOTHING_SIZES = [
+  "XXS",
+  "XS",
+  "S",
+  "M",
+  "L",
+  "XL",
+  "XXL",
+  "3XL",
+  "4XL",
+];
+export const SHOE_SIZES = Array.from({ length: 14 }, (_, index) =>
+  String(index + 35),
+);

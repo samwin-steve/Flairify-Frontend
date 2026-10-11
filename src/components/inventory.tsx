@@ -19,6 +19,8 @@ export function Inventory({
 }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
+  const [department, setDepartment] = useState("");
+  const [visibleCount, setVisibleCount] = useState(24);
   const [availableOnly, setAvailableOnly] = useState(true);
   const catalog = useQuery({
     queryKey: ["catalog"],
@@ -32,6 +34,9 @@ export function Inventory({
   const products = (catalog.data?.products || []).filter(
     (p) =>
       (!category || p.category === category) &&
+      (!department ||
+        p.attributes.department === department ||
+        p.attributes.department === "unisex") &&
       (!query ||
         `${p.name} ${p.category} ${p.description}`
           .toLowerCase()
@@ -49,9 +54,10 @@ export function Inventory({
       </p>
       <div className="notice">
         <p>
-          Items marked Sample use demonstration prices and stock. Seller
-          listings use supplied details. All purchases are mock orders: no
-          payment or delivery.
+          Sample items use archived product photos with simulated prices, sizes
+          and stock. They are not live retailer offers. Seller listings use
+          supplied details. All purchases are mock orders: no payment or
+          delivery.
         </p>
       </div>
       <Button variant="outline" onClick={onSell}>
@@ -65,7 +71,10 @@ export function Inventory({
           </span>
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setVisibleCount(24);
+            }}
             placeholder="A shirt, a jacket, a fresh possibility…"
           />
         </label>
@@ -73,7 +82,10 @@ export function Inventory({
           Category
           <select
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              setVisibleCount(24);
+            }}
           >
             <option value="">All categories</option>
             {[
@@ -91,11 +103,29 @@ export function Inventory({
             ))}
           </select>
         </label>
+        <label className="field">
+          Department
+          <select
+            value={department}
+            onChange={(e) => {
+              setDepartment(e.target.value);
+              setVisibleCount(24);
+            }}
+          >
+            <option value="">All departments</option>
+            <option value="women">Women + unisex</option>
+            <option value="men">Men + unisex</option>
+            <option value="unisex">Unisex</option>
+          </select>
+        </label>
         <label className="check-line">
           <input
             type="checkbox"
             checked={availableOnly}
-            onChange={(e) => setAvailableOnly(e.target.checked)}
+            onChange={(e) => {
+              setAvailableOnly(e.target.checked);
+              setVisibleCount(24);
+            }}
           />{" "}
           In stock only
         </label>
@@ -106,9 +136,14 @@ export function Inventory({
           {catalog.error.message}
         </p>
       )}
-      <p className="small-note">{products.length} pieces</p>
+      <p className="small-note" role="status">
+        {products.length} pieces · Showing{" "}
+        {Math.min(visibleCount, products.length)}
+        {catalog.data &&
+          ` of ${catalog.data.products.length} catalogue options`}
+      </p>
       <div className="inventory-grid">
-        {products.map((p) => {
+        {products.slice(0, visibleCount).map((p) => {
           const variants = p.variants.filter((v) =>
             v.stock.some((s) => s.quantity > 0),
           );
@@ -127,13 +162,18 @@ export function Inventory({
               </div>
               <div className="inventory-card-body">
                 <div className="section-line">
-                  <span className="eyebrow">{p.category}</span>
+                  <span className="eyebrow">
+                    {p.attributes.department
+                      ? `${p.attributes.department} · `
+                      : ""}
+                    {p.category}
+                  </span>
                   <strong>{money(p.price)}</strong>
                 </div>
                 <h3>{p.name}</h3>
                 <p className="small-note">
                   {variants.length
-                    ? `Available sizes: ${[...new Set(variants.map((v) => v.size))].join(", ")}`
+                    ? `${p.sample ? "Sample sizes" : "Available sizes"}: ${[...new Set(variants.map((v) => v.size))].join(", ")}`
                     : "Currently unavailable"}
                 </p>
                 <p className="small-note">
@@ -165,6 +205,19 @@ export function Inventory({
           );
         })}
       </div>
+      {visibleCount < products.length && (
+        <div className="catalog-load-more">
+          <Button
+            variant="outline"
+            onClick={() => setVisibleCount((count) => count + 24)}
+          >
+            Show more clothes
+          </Button>
+          <p className="small-note">
+            Search and filters include the entire catalogue.
+          </p>
+        </div>
+      )}
       {!catalog.isLoading && !products.length && (
         <div className="empty-state">
           <h2>No pieces match yet.</h2>

@@ -7,7 +7,10 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000",
+    baseURL:
+      process.env.PLAYWRIGHT_BASE_URL ||
+      process.env.PLAYWRIGHT_LOCAL_BASE_URL ||
+      "http://localhost:3000",
     trace: "retain-on-failure",
   },
   projects: [

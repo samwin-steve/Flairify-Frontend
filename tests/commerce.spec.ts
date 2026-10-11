@@ -104,6 +104,12 @@ test("seller can add photographed clothes, update stock, index and receive mock 
   await page.getByLabel("SKU", { exact: true }).fill("QA-SHIRT-01");
   await page.getByLabel("Price (INR)", { exact: true }).fill("799");
   await page.getByLabel("Colour", { exact: true }).fill("White");
+  await page
+    .getByRole("combobox", { name: "Store", exact: true })
+    .selectOption("bandra");
+  await page
+    .getByRole("combobox", { name: "Department", exact: true })
+    .selectOption("men");
   await page.getByLabel("Stock quantity", { exact: true }).fill("3");
   await expect(
     page.getByRole("img", { name: "Product photo", exact: true }),
@@ -160,4 +166,63 @@ test("seller can add photographed clothes, update stock, index and receive mock 
   await navigate(page, "Inventory");
   await page.getByLabel("Search inventory").fill("Seller QA white shirt");
   await expect(page.locator(".inventory-card")).toHaveCount(0);
+});
+
+test("expanded catalogue filters departments, shows more, and has valid photos", async ({
+  page,
+}) => {
+  await start(page);
+  await expect(page.locator(".inventory-card")).toHaveCount(24);
+  await expect(page.getByRole("status")).toContainText("199 pieces");
+  await page.getByRole("button", { name: "Show more clothes" }).click();
+  await expect(page.locator(".inventory-card")).toHaveCount(48);
+  await page
+    .getByRole("combobox", { name: "Department", exact: true })
+    .selectOption("men");
+  await expect(page.locator(".inventory-card")).toHaveCount(24);
+  await page
+    .getByRole("combobox", { name: "Category", exact: true })
+    .selectOption("top");
+  await expect(page.getByRole("status")).toContainText("25 pieces");
+  await expect(page.locator(".inventory-card").first()).toContainText("4XL");
+  const labels = await page
+    .locator(".inventory-card .eyebrow")
+    .allTextContents();
+  expect(
+    labels.every(
+      (label) => label.startsWith("men") || label.startsWith("unisex"),
+    ),
+  ).toBe(true);
+  await page
+    .getByRole("combobox", { name: "Department", exact: true })
+    .selectOption("women");
+  await page.getByLabel("Search inventory").fill("Athena");
+  await expect(page.locator(".inventory-card")).toHaveCount(1);
+  const image = page.locator(".inventory-card img");
+  await image.scrollIntoViewIfNeeded();
+  await expect
+    .poll(() =>
+      image.evaluate(
+        (el: HTMLImageElement) => el.complete && el.naturalWidth > 200,
+      ),
+    )
+    .toBe(true);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  const axe = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
+  expect(
+    axe.violations.map((v) => ({
+      id: v.id,
+      nodes: v.nodes.map((n) => n.target),
+    })),
+  ).toEqual([]);
+  await page.screenshot({
+    path: `test-results/${test.info().project.name}-expanded-catalogue.png`,
+    fullPage: true,
+  });
 });
