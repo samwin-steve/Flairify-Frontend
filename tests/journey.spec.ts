@@ -152,8 +152,7 @@ test("direct photo upload, ownership review, persistence and 3D fallback", async
   await page.reload();
   await expect(page.locator(".app-shell")).toBeVisible();
   const wardrobe = page.getByRole("button", {
-    name: "My Wardrobe",
-    exact: true,
+    name: /^My Wardrobe/,
   });
   if (await wardrobe.isVisible()) await wardrobe.click();
   else

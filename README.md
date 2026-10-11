@@ -1,5 +1,6 @@
 # Flairify frontend
 
+[Open the deployed Flairify app](https://flairify-web-7kxckvikva-uc.a.run.app) · [API documentation](https://flairify-api-7kxckvikva-uc.a.run.app/docs)
 A responsive Next.js web app for wardrobe-first shopping. Light pink identity, original design, accessible Radix dialogs, TanStack Query, React Hook Form/Zod, Firebase client authentication and model-viewer.
 
 **Share your wardrobe once. Find pieces that work with your life—and see the look on you.**
