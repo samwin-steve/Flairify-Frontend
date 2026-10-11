@@ -314,6 +314,9 @@ function Application() {
       setSession(true);
       setAuthOpen(false);
       qc.invalidateQueries();
+      const signedInProfile = await api<Profile>("/profile");
+      qc.setQueryData(["profile"], signedInProfile);
+      setOnboarding(!signedInProfile.onboarding_complete);
     });
     setBusy(false);
   }
