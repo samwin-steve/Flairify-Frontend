@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Search, WandSparkles, MapPin } from "lucide-react";
+import { Search, WandSparkles, MapPin, ShoppingBag, Plus } from "lucide-react";
 import { api } from "@/lib/api";
 import { money } from "@/lib/utils";
 import type { Product, Shop } from "@/lib/types";
@@ -10,14 +10,19 @@ import { Button } from "./ui/button";
 
 export function Inventory({
   onTryOn,
+  onBuy,
+  onSell,
 }: {
   onTryOn: (product: Product) => void;
+  onBuy: (product: Product) => void;
+  onSell: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [availableOnly, setAvailableOnly] = useState(true);
   const catalog = useQuery({
     queryKey: ["catalog"],
+    refetchInterval: 15000,
     queryFn: () => api<{ products: Product[] }>("/catalog"),
   });
   const stores = useQuery({
@@ -39,16 +44,20 @@ export function Inventory({
       <div className="eyebrow">A THOUGHTFUL ADDITION</div>
       <h1>Find your next favourite.</h1>
       <p className="page-subtitle">
-        Browse the inventory. Choose a piece and see a 2D style preview on your
-        own photo.
+        Browse, try a piece on your photo, or place a mock order. No
+        conversation needed.
       </p>
       <div className="notice">
         <p>
-          Sample catalogue · These photographs, prices and store quantities are
-          for the prototype. They are not a live retailer offer. Previews use
-          Google AI and your chosen photo.
+          Items marked Sample use demonstration prices and stock. Seller
+          listings use supplied details. All purchases are mock orders: no
+          payment or delivery.
         </p>
       </div>
+      <Button variant="outline" onClick={onSell}>
+        <Plus size={16} />
+        Sell on Flairify
+      </Button>
       <div className="inventory-filters">
         <label className="field">
           <span>
@@ -137,7 +146,12 @@ export function Inventory({
                     )
                     .join(" · ")}
                 </p>
+                <Button onClick={() => onBuy(p)} disabled={!variants.length}>
+                  <ShoppingBag size={16} />
+                  Mock buy
+                </Button>
                 <Button
+                  variant="outline"
                   disabled={!variants.length || !p.try_on_supported}
                   onClick={() => onTryOn(p)}
                 >

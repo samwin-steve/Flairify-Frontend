@@ -76,6 +76,8 @@ import {
 import { FittingRoom } from "./fitting-room";
 import { Admin } from "./admin";
 import { Inventory } from "./inventory";
+import { Checkout, Orders } from "./checkout";
+import { ShoppingBag, Store as SellerIcon } from "lucide-react";
 import { TryOnDialog } from "./try-on-dialog";
 
 const navigation = [
@@ -84,6 +86,8 @@ const navigation = [
   { id: "inventory", label: "Inventory", icon: StoreIcon },
   { id: "saved", label: "Saved Looks", icon: Bookmark },
   { id: "fitting", label: "Fitting Room", icon: WandSparkles },
+  { id: "orders", label: "My Orders", icon: ShoppingBag },
+  { id: "admin", label: "Seller Studio", icon: SellerIcon },
   { id: "profile", label: "Profile", icon: UserRound },
 ];
 const prompts = [
@@ -142,6 +146,10 @@ function Application() {
   const [input, setInput] = useState("");
   const [storeId, setStoreId] = useState("");
   const [tryOn, setTryOn] = useState<{
+    products: Product[];
+    id?: string;
+  } | null>(null);
+  const [checkout, setCheckout] = useState<{
     products: Product[];
     id?: string;
   } | null>(null);
@@ -325,6 +333,7 @@ function Application() {
     localStorage.removeItem("flairify-token");
     sessionStorage.removeItem("flairify-sizes");
     setSession(false);
+    setCheckout(null);
     setOnboarding(false);
     setMessages([]);
     setConvoId(null);
@@ -423,7 +432,10 @@ function Application() {
       <Onboarding
         profile={profile.data}
         config={config.data}
-        onExit={() => setOnboarding(false)}
+        onExit={() => {
+          setOnboarding(false);
+          setPage("inventory");
+        }}
         onComplete={() => {
           setOnboarding(false);
           refresh();
@@ -871,8 +883,7 @@ function Application() {
               <Menu size={22} />
             </button>
             <span>
-              {navigation.find((n) => n.id === page)?.label ||
-                "Retailer workspace"}
+              {navigation.find((n) => n.id === page)?.label || "Seller Studio"}
             </span>
             <span className="header-separator" />
             <small>Good style. Better possibilities.</small>
@@ -1037,6 +1048,7 @@ function Application() {
                               }
                               onSave={() => saveLook(o)}
                               onTryOn={() => openTryOn(o)}
+                              onBuy={() => setCheckout(o)}
                               onSelect={() => {
                                 setActiveLook(o);
                                 setDetails(true);
@@ -1269,6 +1281,7 @@ function Application() {
                         })
                       }
                       onTryOn={() => openTryOn(s.outfit)}
+                      onBuy={() => setCheckout(s.outfit)}
                       onSelect={() => {
                         setActiveLook(s.outfit);
                         setDetails(true);
@@ -1285,8 +1298,13 @@ function Application() {
           </main>
         )}
         {page === "inventory" && (
-          <Inventory onTryOn={(p) => openTryOn({ products: [p] })} />
+          <Inventory
+            onTryOn={(p) => openTryOn({ products: [p] })}
+            onBuy={(p) => setCheckout({ products: [p] })}
+            onSell={() => changePage("admin")}
+          />
         )}
+        {page === "orders" && <Orders onShop={() => changePage("inventory")} />}
         {page === "fitting" && (
           <FittingRoom
             onShop={() => changePage("inventory")}
@@ -1360,7 +1378,7 @@ function Application() {
                 </div>
                 <Button variant="ghost" onClick={() => changePage("admin")}>
                   <StoreIcon size={17} />
-                  Retailer workspace
+                  Seller Studio
                 </Button>
                 <Button variant="ghost" onClick={logout}>
                   <LogOut size={17} />
@@ -1399,26 +1417,40 @@ function Application() {
             </section>
           </main>
         )}
-        {page === "admin" && profile.data && <Admin profile={profile.data} />}
+        {page === "admin" && profile.data && (
+          <Admin profile={profile.data} demoAdmin={!!config.data?.demo_admin} />
+        )}
         <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
-          {navigation.map((n) => (
-            <button
-              key={n.id}
-              className={page === n.id ? "active" : ""}
-              onClick={() => changePage(n.id)}
-            >
-              <n.icon size={20} />
-              <span>
-                {n.label === "My Wardrobe"
-                  ? "Wardrobe"
-                  : n.label === "Fitting Room"
-                    ? "Fitting"
-                    : n.label === "Saved Looks"
-                      ? "Saved"
-                      : n.label}
-              </span>
-            </button>
-          ))}
+          {navigation
+            .filter((n) =>
+              [
+                "stylist",
+                "wardrobe",
+                "inventory",
+                "orders",
+                "profile",
+              ].includes(n.id),
+            )
+            .map((n) => (
+              <button
+                key={n.id}
+                className={page === n.id ? "active" : ""}
+                onClick={() => changePage(n.id)}
+              >
+                <n.icon size={20} />
+                <span>
+                  {n.label === "My Orders"
+                    ? "Orders"
+                    : n.label === "My Wardrobe"
+                      ? "Wardrobe"
+                      : n.label === "Fitting Room"
+                        ? "Fitting"
+                        : n.label === "Saved Looks"
+                          ? "Saved"
+                          : n.label}
+                </span>
+              </button>
+            ))}
         </nav>
       </div>
       {toast && (
@@ -1441,6 +1473,18 @@ function Application() {
         <Modal open onOpenChange={setDetails} title="Your outfit notebook">
           <div className="drawer-details">{detailsPanel}</div>
         </Modal>
+      )}
+      {checkout && (
+        <Checkout
+          products={checkout.products}
+          outfitId={checkout.id}
+          onClose={() => setCheckout(null)}
+          onPlaced={() => {
+            setCheckout(null);
+            changePage("orders");
+            setToast("Mock order placed. No payment was taken.");
+          }}
+        />
       )}
       {tryOn && config.data && profile.data && (
         <TryOnDialog
@@ -1505,6 +1549,7 @@ function LookCard({
   isSaved,
   onSave,
   onTryOn,
+  onBuy,
   onSelect,
 }: {
   outfit: Outfit;
@@ -1512,6 +1557,7 @@ function LookCard({
   isSaved: boolean;
   onSave: () => void;
   onTryOn: () => void;
+  onBuy: () => void;
   onSelect: () => void;
 }) {
   return (
@@ -1581,6 +1627,15 @@ function LookCard({
         >
           <WandSparkles size={15} />
           See it on me
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onBuy}
+          disabled={!outfit.products.length}
+        >
+          <ShoppingBag size={15} />
+          Mock buy new pieces
         </Button>
         <Button size="sm" onClick={onSelect}>
           Outfit details <ChevronRight size={15} />

@@ -49,3 +49,13 @@ Set runtime Firebase identifiers to enable production sign-in; Google Photos req
 Downloaded clothing/editorial images are stored locally in `public/images`; source pages, authors and Unsplash/Pexels license links are recorded in [image-credits.json](public/image-credits.json). They are illustrative sample media, not merchandise offered by the depicted brands. Original fallback garment illustrations and the sample 3D mannequin are CC0. The mannequin does not represent any customer. No generative paid service outside Google Cloud is required.
 
 [Backend documentation](https://github.com/samwin-steve/Flairify-Backend/tree/main/docs) includes architecture, integration setup, limitations, 3D research, deployment, evaluation, demo script and submission material.
+
+## Seller Studio and mock shopping
+
+- **Seller Studio** is available in the desktop navigation and mobile navigation drawer. Approved sellers add a photo, price, sizes, and stock through **Add clothes**. Owners can approve access requests. Shared inventory edits require a verified owner or seller role; the deployed anonymous demo cannot unlock them.
+- **Inventory → Mock buy** works without wardrobe onboarding or chat. New users can choose **Browse clothes first** during onboarding. Personal stylist conversations still require confirmed wardrobe items.
+- **Mock buy new pieces** on a stylist look uses the same reviewed checkout. Only new products are charged in the displayed mock total; owned pieces are excluded.
+- **My Orders** shows persisted order snapshots after refresh. Checkout explicitly acknowledges no payment or delivery. Sellers see their listed items in **Mock orders received**. Stock is checked but never reserved or decremented for a mock purchase.
+- Sample listings remain labeled. New seller listings are shown once their backend indexing job succeeds. Adding a listing makes it eligible for matching recommendations; it does not guarantee inclusion in every look.
+
+Local browser verification covers direct checkout before onboarding, a stylist checkout, order persistence, photographed seller listings, stock updates, desktop/mobile overflow, and accessibility scans of the new dialogs. Run the backend with `ENABLE_DEMO_ADMIN=true` and `DEMO_ADMIN_KEY=test-admin-key` for the local seller test. The seller test is skipped when `PLAYWRIGHT_BASE_URL` points at a deployment because public demo administrator access is disabled there; real signed-in seller access is checked separately.

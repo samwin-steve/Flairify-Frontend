@@ -67,6 +67,24 @@ test("wardrobe-first journey, budget, saved look, sign-in-required try-on and re
     page.getByRole("button", { name: "Sign in for real previews" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Close dialog" }).click();
+  await page
+    .getByRole("button", { name: "Mock buy new pieces", exact: true })
+    .first()
+    .click();
+  await expect(
+    page.getByText("Only new pieces from this look are included.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await page
+    .getByLabel(
+      "I understand this is a mock order with no payment or delivery.",
+    )
+    .check();
+  await page
+    .getByRole("button", { name: "Place mock order", exact: true })
+    .click();
+  await expect(page.locator(".order-card")).toContainText("From the stylist");
   await page.reload();
   await expect(page.locator(".app-shell")).toBeVisible();
   const fitting = page.getByRole("button", {
@@ -74,7 +92,13 @@ test("wardrobe-first journey, budget, saved look, sign-in-required try-on and re
     exact: true,
   });
   if (await fitting.isVisible()) await fitting.click();
-  else await page.getByRole("button", { name: "Fitting", exact: true }).click();
+  else {
+    await page.getByRole("button", { name: "Open navigation" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Fitting Room", exact: true })
+      .click();
+  }
   await expect(
     page.getByRole("button", { name: "Browse inventory" }),
   ).toBeVisible();
@@ -165,7 +189,13 @@ test("direct photo upload, ownership review, persistence and 3D fallback", async
     exact: true,
   });
   if (await fitting.isVisible()) await fitting.click();
-  else await page.getByRole("button", { name: "Fitting", exact: true }).click();
+  else {
+    await page.getByRole("button", { name: "Open navigation" }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Fitting Room", exact: true })
+      .click();
+  }
   await page.getByRole("button", { name: "3D / AR lab" }).click();
   await expect(page.locator("model-viewer")).toBeVisible({ timeout: 20000 });
   await expect

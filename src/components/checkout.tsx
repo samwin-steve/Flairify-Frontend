@@ -1,0 +1,413 @@
+"use client";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ShoppingBag, PackageCheck } from "lucide-react";
+import { api, post } from "@/lib/api";
+import { money } from "@/lib/utils";
+import type {
+  Product,
+  Shop,
+  MockOrder,
+  OrderQuote,
+  OrderSelection,
+} from "@/lib/types";
+import { Modal } from "./ui/dialog";
+import { Button } from "./ui/button";
+import { Media } from "./media";
+
+export function Checkout({
+  products,
+  outfitId,
+  onClose,
+  onPlaced,
+}: {
+  products: Product[];
+  outfitId?: string;
+  onClose: () => void;
+  onPlaced: (order: MockOrder) => void;
+}) {
+  const qc = useQueryClient();
+  const [choices, setChoices] = useState<Record<string, OrderSelection>>({});
+  const [removed, setRemoved] = useState<string[]>([]);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [requestKey, setRequestKey] = useState(() => crypto.randomUUID());
+  const catalog = useQuery({
+    queryKey: ["checkout-catalog"],
+    queryFn: () => api<{ products: Product[] }>("/catalog"),
+    staleTime: 0,
+  });
+  const stores = useQuery({
+    queryKey: ["stores"],
+    queryFn: () => api<{ stores: Shop[] }>("/stores"),
+  });
+  const current = useMemo(
+    () =>
+      products
+        .filter((p) => !removed.includes(p.id))
+        .map((p) => catalog.data?.products.find((v) => v.id === p.id))
+        .filter((p): p is Product => !!p),
+    [products, catalog.data, removed],
+  );
+  const items = useMemo(
+    () =>
+      current.map((p) => {
+        if (choices[p.id]) return choices[p.id];
+        const previous = products.find((v) => v.id === p.id)?.availability;
+        const variant =
+          p.variants.find(
+            (v) =>
+              v.id === previous?.variant_id &&
+              v.stock.some((s) => s.quantity > 0),
+          ) || p.variants.find((v) => v.stock.some((s) => s.quantity > 0));
+        const stock =
+          variant?.stock.find(
+            (s) => s.store_id === previous?.store_id && s.quantity > 0,
+          ) || variant?.stock.find((s) => s.quantity > 0);
+        return {
+          product_id: p.id,
+          variant_id: variant?.id || "",
+          store_id: stock?.store_id || "",
+          quantity: 1,
+        };
+      }),
+    [current, choices, products],
+  );
+  const missing = products.some(
+    (p) =>
+      !removed.includes(p.id) &&
+      catalog.data &&
+      !catalog.data.products.some((v) => v.id === p.id),
+  );
+  const valid =
+    !missing &&
+    items.length > 0 &&
+    items.every((i) => i.variant_id && i.store_id);
+  const body = {
+    items,
+    source: outfitId ? "stylist" : "inventory",
+    outfit_id: outfitId || null,
+  };
+  const quote = useQuery({
+    queryKey: ["order-quote", items, outfitId],
+    queryFn: () => post<OrderQuote>("/orders/quote", body),
+    enabled: valid,
+    retry: false,
+    staleTime: 0,
+  });
+  function change(id: string, value: OrderSelection) {
+    setChoices((old) => ({ ...old, [id]: value }));
+    setAcknowledged(false);
+    setError("");
+    setRequestKey(crypto.randomUUID());
+  }
+  async function place() {
+    if (!quote.data || !acknowledged || busy || quote.isFetching) return;
+    setBusy(true);
+    setError("");
+    try {
+      const order = await post<MockOrder>("/orders", {
+        ...body,
+        request_key: requestKey,
+        expected_total: quote.data.total,
+        acknowledge_mock: true,
+      });
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["orders"] }),
+        qc.invalidateQueries({ queryKey: ["seller-orders"] }),
+      ]);
+      onPlaced(order);
+    } catch (e) {
+      setError((e as Error).message);
+      setAcknowledged(false);
+      await quote.refetch();
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal
+      open
+      onOpenChange={(v) => !v && !busy && onClose()}
+      title="Your mock checkout"
+      description="Review your new pieces. No payment or delivery will take place."
+      wide
+    >
+      <div className="notice">
+        <ShoppingBag size={20} />
+        <p>
+          This is a mock purchase. Your order will be saved, but no money is
+          charged, no stock is reserved, and nothing is shipped.
+        </p>
+      </div>
+      {outfitId && (
+        <p className="small-note">
+          Only new pieces from this look are included. Clothes you already own
+          stay in your wardrobe.
+        </p>
+      )}
+      {catalog.isLoading && <p role="status">Checking the latest inventory…</p>}
+      {catalog.error && (
+        <p role="alert" className="error">
+          {catalog.error.message}
+        </p>
+      )}
+      {missing && (
+        <p role="alert" className="error">
+          A piece is no longer listed. Close checkout and choose another from
+          Inventory.
+        </p>
+      )}
+      <div className="checkout-items">
+        {current.map((p, index) => {
+          const selection = items[index];
+          const variant = p.variants.find((v) => v.id === selection.variant_id);
+          const stock = variant?.stock.find(
+            (s) => s.store_id === selection.store_id,
+          );
+          return (
+            <section className="checkout-item" key={p.id}>
+              <Media src={p.image} alt={p.name} catalog />
+              <div className="checkout-item-fields">
+                <div className="section-line">
+                  <h3>{p.name}</h3>
+                  <strong>{money(p.price)}</strong>
+                </div>
+                {p.sample && <span className="pill">Sample item</span>}
+                <div className="form-grid">
+                  <label className="field">
+                    Size and colour
+                    <select
+                      aria-label={`Size for ${p.name}`}
+                      value={selection.variant_id}
+                      disabled={busy}
+                      onChange={(e) => {
+                        const v = p.variants.find(
+                          (v) => v.id === e.target.value,
+                        )!;
+                        change(p.id, {
+                          ...selection,
+                          variant_id: v.id,
+                          store_id:
+                            v.stock.find((s) => s.quantity > 0)?.store_id || "",
+                          quantity: 1,
+                        });
+                      }}
+                    >
+                      {!variant && <option value="">Unavailable</option>}
+                      {p.variants
+                        .filter((v) => v.stock.some((s) => s.quantity > 0))
+                        .map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.size} · {v.colour}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <label className="field">
+                    Store
+                    <select
+                      aria-label={`Store for ${p.name}`}
+                      value={selection.store_id}
+                      disabled={busy}
+                      onChange={(e) =>
+                        change(p.id, {
+                          ...selection,
+                          store_id: e.target.value,
+                          quantity: 1,
+                        })
+                      }
+                    >
+                      {variant?.stock
+                        .filter((s) => s.quantity > 0)
+                        .map((s) => (
+                          <option key={s.store_id} value={s.store_id}>
+                            {stores.data?.stores.find(
+                              (v) => v.id === s.store_id,
+                            )?.name || s.store_id}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <label className="field">
+                    Quantity
+                    <select
+                      aria-label={`Quantity for ${p.name}`}
+                      value={selection.quantity}
+                      disabled={busy}
+                      onChange={(e) =>
+                        change(p.id, {
+                          ...selection,
+                          quantity: Number(e.target.value),
+                        })
+                      }
+                    >
+                      {Array.from(
+                        { length: Math.min(stock?.quantity || 1, 10) },
+                        (_, i) => (
+                          <option key={i + 1} value={i + 1}>
+                            {i + 1}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </label>
+                </div>
+                {current.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => {
+                      setRemoved([...removed, p.id]);
+                      setAcknowledged(false);
+                      setRequestKey(crypto.randomUUID());
+                    }}
+                  >
+                    Remove from this order
+                  </Button>
+                )}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+      {quote.error && (
+        <p className="error" role="alert">
+          {quote.error.message}
+        </p>
+      )}
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="checkout-total">
+        <span>Mock order total</span>
+        <strong>
+          {quote.isFetching
+            ? "Checking…"
+            : valid && quote.data
+              ? money(quote.data.total)
+              : "—"}
+        </strong>
+      </div>
+      <label className="check-line">
+        <input
+          type="checkbox"
+          checked={acknowledged}
+          disabled={busy}
+          onChange={(e) => setAcknowledged(e.target.checked)}
+        />
+        I understand this is a mock order with no payment or delivery.
+      </label>
+      <div className="button-row">
+        <Button
+          onClick={place}
+          disabled={
+            busy ||
+            !valid ||
+            !quote.data ||
+            !!quote.error ||
+            quote.isFetching ||
+            !acknowledged
+          }
+        >
+          <PackageCheck size={17} />
+          {busy ? "Saving your order…" : "Place mock order"}
+        </Button>
+        <Button variant="ghost" disabled={busy} onClick={onClose}>
+          Keep browsing
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
+export function OrderList({
+  orders,
+  seller = false,
+}: {
+  orders: MockOrder[];
+  seller?: boolean;
+}) {
+  return (
+    <div className="order-list">
+      {orders.map((order) => (
+        <article className="white-panel order-card" key={order.id}>
+          <div className="section-line">
+            <div>
+              <span className="pill">Mock order placed</span>
+              <h3>{order.id}</h3>
+              <p className="small-note">
+                {new Date(order.created_at).toLocaleString()} ·{" "}
+                {order.source === "stylist"
+                  ? "From the stylist"
+                  : "From Inventory"}
+              </p>
+            </div>
+            <strong>{money(order.total)}</strong>
+          </div>
+          {order.items.map((line) => (
+            <div
+              className="order-line"
+              key={`${line.product_id}-${line.variant_id}-${line.store_id}`}
+            >
+              <Media src={line.image} alt={line.name} catalog />
+              <div>
+                <strong>{line.name}</strong>
+                <p className="small-note">
+                  {line.size} · {line.colour} · Qty {line.quantity}
+                  <br />
+                  {line.store_name}
+                  {line.sample ? " · Sample item" : ""}
+                </p>
+              </div>
+              <span>{money(line.line_total)}</span>
+            </div>
+          ))}
+          <p className="fine-print">
+            {seller ? "Your listed items only. " : ""}No payment, delivery, or
+            stock reservation. Prices shown were saved when the order was
+            placed.
+          </p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+export function Orders({ onShop }: { onShop: () => void }) {
+  const orders = useQuery({
+    queryKey: ["orders"],
+    queryFn: () => api<{ orders: MockOrder[] }>("/orders"),
+  });
+  return (
+    <main className="page-content">
+      <span className="eyebrow">A LITTLE SHOPPING NOTEBOOK</span>
+      <h1>My orders.</h1>
+      <p className="page-subtitle">
+        Your mock purchases, saved in one place. No payments or deliveries.
+      </p>
+      {orders.isLoading && <p role="status">Loading your orders…</p>}
+      {orders.error && (
+        <p className="error" role="alert">
+          {orders.error.message}
+        </p>
+      )}
+      {!orders.isLoading && !orders.error && !orders.data?.orders.length && (
+        <div className="empty-state">
+          <ShoppingBag size={32} />
+          <h2>Your next favourite is waiting.</h2>
+          <p>
+            Browse and place a mock order directly. No stylist conversation
+            needed.
+          </p>
+          <Button onClick={onShop}>Explore inventory</Button>
+        </div>
+      )}
+      <OrderList orders={orders.data?.orders || []} />
+    </main>
+  );
+}

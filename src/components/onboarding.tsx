@@ -878,11 +878,11 @@ export function Onboarding({
           flairify<span>✧</span>
         </button>
         <button
-          className="icon-button"
+          className="button button-ghost"
           onClick={onExit}
-          aria-label="Close onboarding"
+          aria-label="Browse clothes first"
         >
-          <X size={22} />
+          Browse clothes first
         </button>
       </header>
       <div className="onboarding-progress">
@@ -941,7 +941,7 @@ export function Onboarding({
                     checked={false}
                     onChange={async (e) => {
                       if (e.target.checked) {
-                        const { admin, demo, ...data } = profile;
+                        const { admin, demo, seller, ...data } = profile;
                         await put("/profile", {
                           ...data,
                           consent: {

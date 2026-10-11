@@ -75,7 +75,7 @@ export function TryOnDialog({
     if (!allow)
       throw new Error("Allow Google AI photo processing to continue.");
     if (!profile.consent.ai_photo_processing) {
-      const { admin, demo, ...data } = profile;
+      const { admin, demo, seller, ...data } = profile;
       await put("/profile", {
         ...data,
         consent: { ...data.consent, ai_photo_processing: true },

@@ -59,6 +59,8 @@ export interface Product {
   content_hash: string;
   product_url?: string;
   try_on_supported?: boolean;
+  active?: boolean;
+  seller_id?: string;
   availability?: Stock & { size: string; variant_id: string };
   store?: Shop;
 }
@@ -128,6 +130,7 @@ export interface Profile {
   consent: { remember_preferences: boolean; ai_photo_processing: boolean };
   onboarding_complete: boolean;
   admin?: boolean;
+  seller?: boolean;
   demo?: boolean;
 }
 export interface Photo {
@@ -159,4 +162,37 @@ export interface Duplicate {
   item_ids: string[];
   reason: string;
   status: string;
+}
+
+export interface OrderSelection {
+  product_id: string;
+  variant_id: string;
+  store_id: string;
+  quantity: number;
+}
+export interface OrderLine extends OrderSelection {
+  sku: string;
+  name: string;
+  image: string;
+  size: string;
+  colour: string;
+  store_name: string;
+  unit_price: number;
+  line_total: number;
+  sample: boolean;
+}
+export interface OrderQuote {
+  items: OrderLine[];
+  total: number;
+  currency: string;
+  mock: true;
+  payment_status: string;
+  fulfillment_status: string;
+  notice: string;
+}
+export interface MockOrder extends OrderQuote {
+  id: string;
+  status: string;
+  created_at: string;
+  source: "inventory" | "stylist";
 }
