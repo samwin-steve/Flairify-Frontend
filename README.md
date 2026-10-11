@@ -23,7 +23,7 @@ No credentials are needed in demo mode. Start a private demo session, enter clot
 
 Create an account or sign in, allow Google photo processing, and upload a clear full-body photo. Flairify automatically extracts visible garments for ownership review. Once confirmed, browse Inventory, choose a photographed clothing item, and select **Try this on**. Existing wardrobe photos also work as preview references. The Fitting Room shows your original photo and Google-generated 2D preview, with download, regenerate and delete controls.
 
-Anonymous sample mode does not call paid models. All catalogue prices and stock remain sample facts. The active image model is Google Gemini on Vertex AI; previews are style visualizations, not exact fit predictions.
+Anonymous sample mode does not call paid models. Sample catalogue prices, sizes and stock are simulated; seller listings retain supplied facts. The active image model is Google Gemini on Vertex AI; previews are style visualizations, not exact fit predictions.
 
 ## Verification
 
@@ -65,3 +65,5 @@ Local browser verification covers direct checkout before onboarding, a stylist c
 Browse 200 sample options across men’s, women’s and unisex departments. The catalogue includes tops, bottoms, jackets, dresses, shoes, bags and accessories. Department/category/search filters apply to every record; **Show more clothes** loads another 24 cards. Sample sizes span XXS–4XL and EU 35–48, with one-size accessories. Prices, size coverage and store quantities are simulated; actual seller listings retain supplied variants. Stylist size and department controls remain editable after onboarding.
 
 190 downloaded archive photographs include eight exact image references from the requested Myntra CSV and 182 full-resolution fashion dataset images. See [catalogue provenance and license notices](CATALOGUE.md) and `public/image-credits.json`.
+
+Latest verification: 14 desktop/mobile Playwright journeys, four Vitest tests, TypeScript and production builds passed. All 190 added deployed image files matched their validated local copies. Live department filtering, refresh, 4XL/EU48 selection and ₹5,000 budget enforcement passed on desktop and Pixel 7 emulation. See the backend’s `docs/live-catalogue-results.json` for the collected evidence.
