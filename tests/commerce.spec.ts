@@ -10,6 +10,7 @@ async function start(page: import("@playwright/test").Page) {
   ).toBeVisible();
 }
 async function navigate(page: import("@playwright/test").Page, name: string) {
+  await expect(page.locator(".app-shell")).toBeVisible();
   const button = page
     .getByRole("button", { name, exact: true })
     .filter({ visible: true });
