@@ -21,13 +21,16 @@ export function Media({
       setUrl(src);
       return;
     }
+    setUrl("");
     let active = true;
     let blob = "";
     mediaBlob(src.slice(6), catalog)
       .then((v) => {
         blob = v;
-        if (active) setUrl(v);
-        else URL.revokeObjectURL(v);
+        if (active) {
+          setFailed(false);
+          setUrl(v);
+        } else URL.revokeObjectURL(v);
       })
       .catch(() => {
         if (active) setFailed(true);

@@ -58,6 +58,7 @@ export interface Product {
   updated_at: string;
   content_hash: string;
   product_url?: string;
+  try_on_supported?: boolean;
   availability?: Stock & { size: string; variant_id: string };
   store?: Shop;
 }
@@ -106,6 +107,12 @@ export interface Job {
     accepted?: boolean;
     item_ids?: string[];
     review_required?: boolean;
+    reference_media_id?: string;
+    product_id?: string;
+    product_name?: string;
+    product_image?: string;
+    provider?: string;
+    sample_product?: boolean;
   } | null;
   created_at: string;
   updated_at: string;
@@ -134,6 +141,7 @@ export interface Reference {
   id: string;
   kind: string;
   media_id: string;
+  source_photo_id?: string;
 }
 export interface Config {
   mode: string;
@@ -143,6 +151,7 @@ export interface Config {
   video: boolean;
   photos_client_id: string;
   demo_admin: boolean;
+  sample_try_on?: boolean;
   avatar: { asset: string; status: string; personalized: boolean };
 }
 export interface Duplicate {

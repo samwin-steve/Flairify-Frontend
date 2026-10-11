@@ -6,12 +6,13 @@ import {
   Check,
   Clapperboard,
   ImagePlus,
+  Download,
   LoaderCircle,
   RotateCcw,
   Trash2,
 } from "lucide-react";
-import { api, post, del } from "@/lib/api";
-import type { Job, Reference } from "@/lib/types";
+import { api, post, del, mediaBlob } from "@/lib/api";
+import type { Job, Reference, Photo, Config } from "@/lib/types";
 import { Button } from "./ui/button";
 import { Media, PrivateVideo } from "./media";
 import { UploadZone } from "./onboarding";
@@ -119,7 +120,13 @@ function ModelViewer() {
   );
 }
 
-export function FittingRoom() {
+export function FittingRoom({
+  onShop,
+  onWardrobe,
+}: {
+  onShop: () => void;
+  onWardrobe: () => void;
+}) {
   const qc = useQueryClient();
   const [tab, setTab] = useState<"previews" | "references" | "3d">("previews");
   const [error, setError] = useState("");
@@ -131,9 +138,13 @@ export function FittingRoom() {
         ? 2000
         : false,
   });
+  const config = useQuery({
+    queryKey: ["config"],
+    queryFn: () => api<Config>("/config"),
+  });
   const photos = useQuery({
     queryKey: ["photos"],
-    queryFn: () => api<{ references: Reference[] }>("/photos"),
+    queryFn: () => api<{ references: Reference[]; photos: Photo[] }>("/photos"),
   });
   const list =
     jobs.data?.jobs.filter(
@@ -148,6 +159,16 @@ export function FittingRoom() {
     } catch (e) {
       setError((e as Error).message);
     }
+  }
+  async function download(id: string) {
+    await action(async () => {
+      const url = await mediaBlob(id);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "flairify-style-preview.png";
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
   }
   return (
     <div className="page-content">
@@ -189,11 +210,12 @@ export function FittingRoom() {
               <p>
                 Choose “See it on me” on a stylist recommendation.
                 <br />
-                Real generation needs your reference and a verified product
-                photo.
+                Your uploaded outfit photos can be used directly. Choose a
+                garment from Inventory to get started.
               </p>
+              <Button onClick={onShop}>Browse inventory</Button>
               <span className="pill">
-                AI style visualizations · Not exact fit predictions
+                Google AI · 2D style previews · Not exact fit predictions
               </span>
             </div>
           )}
@@ -222,12 +244,34 @@ export function FittingRoom() {
                   (j.kind === "video" ? (
                     <PrivateVideo id={j.result.media_id} />
                   ) : (
-                    <Media
-                      src={"media:" + j.result.media_id}
-                      alt="AI-generated style visualization"
-                      className="preview-image"
-                    />
+                    <div className="preview-comparison">
+                      {j.result.reference_media_id && (
+                        <figure>
+                          <figcaption>Your uploaded photo</figcaption>
+                          <Media
+                            src={"media:" + j.result.reference_media_id}
+                            alt="Original reference photo"
+                          />
+                        </figure>
+                      )}
+                      <figure>
+                        <figcaption>Your Google AI preview</figcaption>
+                        <Media
+                          src={"media:" + j.result.media_id}
+                          alt="AI-generated style visualization"
+                          className="preview-image"
+                        />
+                      </figure>
+                    </div>
                   ))}
+                {j.result?.product_name && (
+                  <p>
+                    <strong>{j.result.product_name}</strong>
+                    {j.result.sample_product
+                      ? " · Sample catalogue garment"
+                      : ""}
+                  </p>
+                )}
                 {j.result?.label && (
                   <p className="fine-print">{j.result.label}</p>
                 )}
@@ -243,24 +287,50 @@ export function FittingRoom() {
                       Accept preview
                     </Button>
                   )}
-                  {j.kind === "try_on" && j.result?.accepted && (
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        action(() =>
-                          post("/generate/video", {
-                            source_job_id: j.id,
-                            accepted_preview: true,
-                            request_key: crypto.randomUUID(),
-                            duration: 4,
-                          }),
-                        )
-                      }
-                    >
-                      <Clapperboard size={15} />
-                      Show in motion
-                    </Button>
-                  )}
+                  {j.kind === "try_on" &&
+                    j.result?.accepted &&
+                    config.data?.video && (
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          action(() =>
+                            post("/generate/video", {
+                              source_job_id: j.id,
+                              accepted_preview: true,
+                              request_key: crypto.randomUUID(),
+                              duration: 4,
+                            }),
+                          )
+                        }
+                      >
+                        <Clapperboard size={15} />
+                        Show in motion
+                      </Button>
+                    )}
+                  {j.status === "succeeded" &&
+                    j.kind === "try_on" &&
+                    j.result?.media_id && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => download(j.result!.media_id!)}
+                        >
+                          <Download size={15} />
+                          Download
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            action(() => post("/jobs/" + j.id + "/regenerate"))
+                          }
+                        >
+                          <RotateCcw size={15} />
+                          Regenerate
+                        </Button>
+                      </>
+                    )}
                   {j.status === "failed" && j.attempts < 3 && (
                     <Button
                       size="sm"
@@ -300,40 +370,83 @@ export function FittingRoom() {
         </>
       )}
       {tab === "references" && (
-        <div className="reference-grid">
-          {["portrait", "full_body"].map((kind) => (
-            <div className="white-panel" key={kind}>
-              <h3>{kind === "portrait" ? "Portrait" : "Full-body photo"}</h3>
-              {photos.data?.references.find((r) => r.kind === kind) && (
-                <>
-                  <Media
-                    src={
-                      "media:" +
-                      photos.data.references.find((r) => r.kind === kind)!
-                        .media_id
-                    }
-                    alt={kind}
-                    className="reference-image"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={async () => {
-                      await del("/photos/" + kind);
+        <>
+          <div className="notice">
+            <p>
+              Your wardrobe uploads are available for previews too. Full-body
+              references also create garment suggestions when you have allowed
+              Google AI processing.
+            </p>
+            <Button size="sm" variant="outline" onClick={onWardrobe}>
+              Review detected garments
+            </Button>
+          </div>
+          <div className="reference-grid">
+            {["portrait", "full_body"].map((kind) => (
+              <div className="white-panel" key={kind}>
+                <h3>{kind === "portrait" ? "Portrait" : "Full-body photo"}</h3>
+                {photos.data?.references.find((r) => r.kind === kind) && (
+                  <>
+                    <Media
+                      src={
+                        "media:" +
+                        photos.data.references.find((r) => r.kind === kind)!
+                          .media_id
+                      }
+                      alt={kind}
+                      className="reference-image"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={async () => {
+                        await del("/photos/" + kind);
+                        qc.invalidateQueries({ queryKey: ["photos"] });
+                      }}
+                    >
+                      Delete reference
+                    </Button>
+                  </>
+                )}
+                <UploadZone
+                  kind={kind}
+                  onDone={() => {
+                    qc.invalidateQueries({ queryKey: ["photos"] });
+                    qc.invalidateQueries({ queryKey: ["jobs"] });
+                    qc.invalidateQueries({ queryKey: ["wardrobe"] });
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          <h2>Your outfit photos</h2>
+          <div className="source-photo-grid">
+            {photos.data?.photos.map((p) => (
+              <article key={p.id} className="white-panel">
+                <Media
+                  src={"media:" + p.media_id}
+                  alt="Uploaded outfit photo"
+                />
+                <Button size="sm" variant="outline" onClick={onShop}>
+                  Try a garment
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    action(async () => {
+                      await del("/photos/" + p.id);
                       qc.invalidateQueries({ queryKey: ["photos"] });
-                    }}
-                  >
-                    Delete reference
-                  </Button>
-                </>
-              )}
-              <UploadZone
-                kind={kind}
-                onDone={() => qc.invalidateQueries({ queryKey: ["photos"] })}
-              />
-            </div>
-          ))}
-        </div>
+                      qc.invalidateQueries({ queryKey: ["wardrobe"] });
+                    })
+                  }
+                >
+                  Delete photo
+                </Button>
+              </article>
+            ))}
+          </div>
+        </>
       )}
       {tab === "3d" && <ModelViewer />}
     </div>

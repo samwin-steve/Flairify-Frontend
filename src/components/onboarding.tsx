@@ -201,9 +201,13 @@ export function ProfileForm({
 export function UploadZone({
   kind = "wardrobe",
   onDone,
+  beforeUpload,
+  disabled = false,
 }: {
   kind?: string;
   onDone: () => void;
+  beforeUpload?: () => Promise<void>;
+  disabled?: boolean;
 }) {
   const [files, setFiles] = useState<
     { name: string; progress: number; error?: string; done?: boolean }[]
@@ -221,6 +225,7 @@ export function UploadZone({
           f.size > 10 * 1024 * 1024
         )
           throw new Error("Use JPEG, PNG or WebP, up to 10 MB.");
+        if (beforeUpload) await beforeUpload();
         await uploadPhoto(f, kind, (n) =>
           setFiles((old) =>
             old.map((x, j) => (j === i ? { ...x, progress: n } : x)),
@@ -246,11 +251,16 @@ export function UploadZone({
         type="file"
         accept="image/jpeg,image/png,image/webp"
         multiple={kind === "wardrobe"}
+        disabled={disabled}
         className="sr-only"
         aria-label={"Upload " + kind + " photos"}
         onChange={(e) => upload(e.target.files)}
       />
-      <button className="upload-zone" onClick={() => ref.current?.click()}>
+      <button
+        className="upload-zone"
+        disabled={disabled}
+        onClick={() => ref.current?.click()}
+      >
         <span className="circle-icon">
           <CloudUpload size={27} />
         </span>
@@ -464,7 +474,9 @@ export function PersonSelection({
         method: "PATCH",
         body: JSON.stringify({ person_box: box, group_photo: group }),
       });
-      setError("Selection saved");
+      setError(
+        "Selection saved. Google AI will find visible garments when enabled.",
+      );
       onSaved();
     } catch (e) {
       setError((e as Error).message);
@@ -826,6 +838,7 @@ export function Onboarding({
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ["wardrobe"] });
     qc.invalidateQueries({ queryKey: ["photos"] });
+    qc.invalidateQueries({ queryKey: ["jobs"] });
   };
   const active =
     jobQuery.data?.jobs.filter(
@@ -920,6 +933,30 @@ export function Onboarding({
         )}
         {step === 1 && (
           <>
+            {config.analysis === "gemini" &&
+              !profile.consent.ai_photo_processing && (
+                <label className="check-line notice">
+                  <input
+                    type="checkbox"
+                    checked={false}
+                    onChange={async (e) => {
+                      if (e.target.checked) {
+                        const { admin, demo, ...data } = profile;
+                        await put("/profile", {
+                          ...data,
+                          consent: {
+                            ...data.consent,
+                            ai_photo_processing: true,
+                          },
+                        });
+                        qc.invalidateQueries({ queryKey: ["profile"] });
+                      }
+                    }}
+                  />
+                  Allow Google AI to automatically find visible garments in my
+                  outfit photos and create previews when I request them.
+                </label>
+              )}
             <div className="reference-grid">
               {["portrait", "full_body"].map((kind) => (
                 <div className="white-panel" key={kind}>
@@ -962,13 +999,22 @@ export function Onboarding({
             <div className="notice">
               <ShieldCheck size={20} />
               <p>
-                Reference photos are private and used only when you request a
-                style visualization. They do not provide accurate body
-                measurements. You can replace or delete them anytime.
+                Your full-body photo is also checked for visible garments when
+                you allow Google AI processing. Reference photos stay private;
+                style previews are generated only on request. They do not
+                provide accurate body measurements. You can replace or delete
+                them anytime.
               </p>
             </div>
-            <Button onClick={() => setStep(2)}>
-              Continue <ArrowRight size={16} />
+            <Button
+              onClick={() =>
+                photoQuery.data?.photos.length ? process() : setStep(2)
+              }
+            >
+              {photoQuery.data?.photos.length
+                ? "Review detected garments"
+                : "Continue"}{" "}
+              <ArrowRight size={16} />
             </Button>
             <button className="text-link" onClick={() => setStep(2)}>
               Add reference photos later

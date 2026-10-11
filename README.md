@@ -19,6 +19,12 @@ Start the [FastAPI backend](https://github.com/samwin-steve/Flairify-Backend) on
 
 No credentials are needed in demo mode. Start a private demo session, enter clothing/shoe sizes, add a few photos or choose the sample wardrobe, review and confirm garments, then meet the stylist. Mumbai recommendations check the combined cost of new pieces against ₹5,000. Sample photos, prices, stock and store locations remain explicitly labeled.
 
+## Your photo to a new look
+
+Create an account or sign in, allow Google photo processing, and upload a clear full-body photo. Flairify automatically extracts visible garments for ownership review. Once confirmed, browse Inventory, choose a photographed clothing item, and select **Try this on**. Existing wardrobe photos also work as preview references. The Fitting Room shows your original photo and Google-generated 2D preview, with download, regenerate and delete controls.
+
+Anonymous sample mode does not call paid models. All catalogue prices and stock remain sample facts. The active image model is Google Gemini on Vertex AI; previews are style visualizations, not exact fit predictions.
+
 ## Verification
 
 ```sh
@@ -30,7 +36,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Playwright covers desktop and mobile onboarding, saved looks, honest provider failure, refresh persistence, keyboard focus, contrast and overflow. Physical-device AR needs separate testing. Builds use Next.js's supported webpack path after a local Turbopack process-binding failure.
+Playwright covers desktop and mobile onboarding, saved looks, inventory search, sign-in-required generation, refresh persistence, keyboard focus, contrast and overflow. Physical-device AR needs separate testing. Builds use Next.js's supported webpack path after a local Turbopack process-binding failure.
 
 ## Cloud Run
 

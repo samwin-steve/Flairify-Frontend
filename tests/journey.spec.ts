@@ -1,16 +1,14 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
-test("wardrobe-first journey, budget, saved look, unavailable try-on and refresh", async ({
+test("wardrobe-first journey, budget, saved look, sign-in-required try-on and refresh", async ({
   page,
 }) => {
   await page.goto("/");
   await expect(
     page.getByRole("heading", { name: /A wardrobe full/ }),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Meet your personal stylist" })
-    .click();
+  await page.getByRole("button", { name: "Explore sample demo" }).click();
   await page.getByLabel("What should we call you?").fill("Asha");
   await page.getByLabel("Clothing size", { exact: true }).selectOption("M");
   await page.getByLabel("Shoe size (EU)").selectOption("39");
@@ -36,7 +34,9 @@ test("wardrobe-first journey, budget, saved look, unavailable try-on and refresh
     .getByRole("button", { name: "Meet your stylist", exact: true })
     .click();
   await page.getByRole("button", { name: /Help me pack for Mumbai/ }).click();
-  await expect(page.locator(".look-card").first()).toBeVisible({timeout:45000});
+  await expect(page.locator(".look-card").first()).toBeVisible({
+    timeout: 45000,
+  });
   await page.screenshot({
     path: `test-results/${test.info().project.name}-stylist.png`,
     fullPage: true,
@@ -63,10 +63,10 @@ test("wardrobe-first journey, budget, saved look, unavailable try-on and refresh
     .getByRole("button", { name: "See it on me", exact: true })
     .first()
     .click();
-  await page.getByRole("button", { name: "Request preview" }).click();
   await expect(
-    page.getByText(/Personalized generation is not connected/),
-  ).toBeVisible({ timeout: 15000 });
+    page.getByRole("button", { name: "Sign in for real previews" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Close dialog" }).click();
   await page.reload();
   await expect(page.locator(".app-shell")).toBeVisible();
   const fitting = page.getByRole("button", {
@@ -76,7 +76,7 @@ test("wardrobe-first journey, budget, saved look, unavailable try-on and refresh
   if (await fitting.isVisible()) await fitting.click();
   else await page.getByRole("button", { name: "Fitting", exact: true }).click();
   await expect(
-    page.getByText(/Personalized generation is not connected/),
+    page.getByRole("button", { name: "Browse inventory" }),
   ).toBeVisible();
   await expect(page.locator("body")).toBeVisible();
   expect(
@@ -116,9 +116,7 @@ test("direct photo upload, ownership review, persistence and 3D fallback", async
   page,
 }) => {
   await page.goto("/");
-  await page
-    .getByRole("button", { name: "Meet your personal stylist" })
-    .click();
+  await page.getByRole("button", { name: "Explore sample demo" }).click();
   await page.getByLabel("What should we call you?").fill("Photo QA");
   await page.getByRole("button", { name: "Save and continue" }).click();
   await page
@@ -148,7 +146,9 @@ test("direct photo upload, ownership review, persistence and 3D fallback", async
   await page
     .getByRole("button", { name: "Meet your stylist", exact: true })
     .click();
-  await expect(page.getByRole("status").filter({hasText:"Your wardrobe is ready."})).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Your wardrobe is ready." }),
+  ).toBeVisible();
   await page.reload();
   await expect(page.locator(".app-shell")).toBeVisible();
   const wardrobe = page.getByRole("button", {
@@ -187,4 +187,48 @@ test("direct photo upload, ownership review, persistence and 3D fallback", async
     path: `test-results/${test.info().project.name}-3d.png`,
     fullPage: true,
   });
+});
+
+test("inventory lists available products and requests sign-in for real previews", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Explore sample demo" }).click();
+  await page.getByLabel("What should we call you?").fill("Inventory QA");
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page
+    .getByRole("button", { name: "Add reference photos later" })
+    .click();
+  await page
+    .getByRole("button", { name: "Explore with a sample wardrobe" })
+    .click();
+  await page
+    .getByRole("button", { name: "Confirm ownership", exact: true })
+    .first()
+    .click();
+  await page
+    .getByRole("button", { name: "Meet your stylist", exact: true })
+    .click();
+  await expect(page.locator(".app-shell")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Inventory", exact: true })
+    .filter({ visible: true })
+    .click();
+  await expect(page.locator(".inventory-card")).toHaveCount(9);
+  await page.getByLabel("Search inventory").fill("white shirt");
+  await expect(page.locator(".inventory-card")).toHaveCount(1);
+  await page.getByRole("button", { name: "Try this on", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Sign in for real previews" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Close dialog" }).click();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  const a11y = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+    .analyze();
+  expect(a11y.violations).toEqual([]);
 });

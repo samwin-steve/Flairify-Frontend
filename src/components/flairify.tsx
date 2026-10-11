@@ -75,10 +75,13 @@ import {
 } from "./onboarding";
 import { FittingRoom } from "./fitting-room";
 import { Admin } from "./admin";
+import { Inventory } from "./inventory";
+import { TryOnDialog } from "./try-on-dialog";
 
 const navigation = [
   { id: "stylist", label: "Stylist", icon: Sparkles },
   { id: "wardrobe", label: "My Wardrobe", icon: Shirt },
+  { id: "inventory", label: "Inventory", icon: StoreIcon },
   { id: "saved", label: "Saved Looks", icon: Bookmark },
   { id: "fitting", label: "Fitting Room", icon: WandSparkles },
   { id: "profile", label: "Profile", icon: UserRound },
@@ -138,10 +141,10 @@ function Application() {
   const [convoId, setConvoId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [storeId, setStoreId] = useState("");
-  const [tryOn, setTryOn] = useState<Outfit | null>(null);
-  const [refId, setRefId] = useState("full_body");
-  const [productId, setProductId] = useState("");
-  const [layering, setLayering] = useState(true);
+  const [tryOn, setTryOn] = useState<{
+    products: Product[];
+    id?: string;
+  } | null>(null);
   const [activeLook, setActiveLook] = useState<Outfit | null>(null);
   const [clothingSize, setClothingSize] = useState("");
   const [shoeSize, setShoeSize] = useState("");
@@ -273,6 +276,7 @@ function Application() {
   function refresh() {
     qc.invalidateQueries({ queryKey: ["wardrobe"] });
     qc.invalidateQueries({ queryKey: ["photos"] });
+    qc.invalidateQueries({ queryKey: ["jobs"] });
     qc.invalidateQueries({ queryKey: ["profile"] });
   }
   async function action(fn: () => Promise<unknown>) {
@@ -376,29 +380,8 @@ function Application() {
       setToast("A good look, saved for later.");
     });
   }
-  function openTryOn(outfit: Outfit) {
+  function openTryOn(outfit: { products: Product[]; id?: string }) {
     setTryOn(outfit);
-    setProductId(
-      outfit.products.find((p) =>
-        ["jacket", "top", "bottom", "dress"].includes(p.category),
-      )?.id ||
-        outfit.products[0]?.id ||
-        "",
-    );
-  }
-  async function requestTryOn() {
-    await action(async () => {
-      await post("/generate/try_on", {
-        outfit_id: tryOn!.id,
-        reference_id: refId,
-        product_id: productId,
-        layering,
-        request_key: crypto.randomUUID(),
-      });
-      setTryOn(null);
-      qc.invalidateQueries({ queryKey: ["jobs"] });
-      changePage("fitting");
-    });
   }
   async function nearby() {
     if (!navigator.geolocation) {
@@ -480,8 +463,11 @@ function Application() {
               <div className="landing-buttons">
                 <Button
                   onClick={
-                    config.data?.mode === "production"
-                      ? () => setAuthOpen(true)
+                    firebaseReady || config.data?.mode === "production"
+                      ? () => {
+                          setRegister(true);
+                          setAuthOpen(true);
+                        }
                       : startDemo
                   }
                   disabled={busy}
@@ -489,7 +475,15 @@ function Application() {
                   {busy ? <LoaderCircle className="spin" size={18} /> : null}
                   Meet your personal stylist <ArrowRight size={18} />
                 </Button>
-                <span>Start with what you already love.</span>
+                {config.data?.mode === "demo" && (
+                  <button
+                    className="text-link"
+                    onClick={startDemo}
+                    disabled={busy}
+                  >
+                    Explore sample demo
+                  </button>
+                )}
               </div>
               <div className="landing-principles">
                 <span>
@@ -1287,7 +1281,15 @@ function Application() {
             )}
           </main>
         )}
-        {page === "fitting" && <FittingRoom />}
+        {page === "inventory" && (
+          <Inventory onTryOn={(p) => openTryOn({ products: [p] })} />
+        )}
+        {page === "fitting" && (
+          <FittingRoom
+            onShop={() => changePage("inventory")}
+            onWardrobe={() => changePage("wardrobe")}
+          />
+        )}
         {page === "profile" && profile.data && (
           <main className="page-content">
             <span className="eyebrow">ALWAYS YOUR SAY</span>
@@ -1437,67 +1439,24 @@ function Application() {
           <div className="drawer-details">{detailsPanel}</div>
         </Modal>
       )}
-      {tryOn && (
-        <Modal
-          open
-          onOpenChange={(v) => !v && setTryOn(null)}
-          title="A possibility, on you."
-          description="AI-generated style visualization. This does not predict physical fit."
-        >
-          <div className="form-stack">
-            <label className="field">
-              Reference photo
-              <select value={refId} onChange={(e) => setRefId(e.target.value)}>
-                <option value="full_body">Full-body photo</option>
-                <option value="portrait">
-                  Portrait (limited garment visibility)
-                </option>
-              </select>
-            </label>
-            <label className="field">
-              Retailer garment
-              <select
-                value={productId}
-                onChange={(e) => setProductId(e.target.value)}
-              >
-                {tryOn.products.map((p) => (
-                  <option value={p.id} key={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="check-line">
-              <input
-                type="checkbox"
-                checked={layering}
-                onChange={(e) => setLayering(e.target.checked)}
-              />
-              Preserve my owned shirt with layered image editing
-            </label>
-            <div className="notice">
-              <p>
-                {config.data?.try_on
-                  ? "Generation requires provider access and verified product imagery."
-                  : "Generation is not connected in demo mode. A request will return an honest unavailable result."}{" "}
-                Sample photographs illustrate the catalogue and are not verified
-                retailer product images.
-              </p>
-            </div>
-            <Button onClick={requestTryOn}>
-              Request preview <Sparkles size={16} />
-            </Button>
-            <button
-              className="text-link"
-              onClick={() => {
-                setTryOn(null);
-                changePage("fitting");
-              }}
-            >
-              Add or replace my reference photo
-            </button>
-          </div>
-        </Modal>
+      {tryOn && config.data && profile.data && (
+        <TryOnDialog
+          products={tryOn.products}
+          outfitId={tryOn.id}
+          config={config.data}
+          profile={profile.data}
+          onClose={() => setTryOn(null)}
+          onQueued={() => {
+            setTryOn(null);
+            changePage("fitting");
+          }}
+          onSignIn={async () => {
+            setTryOn(null);
+            await logout();
+            setRegister(true);
+            setAuthOpen(true);
+          }}
+        />
       )}
       {addPhotos && config.data && (
         <Modal
