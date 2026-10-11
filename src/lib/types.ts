@@ -78,6 +78,11 @@ export interface Assessment {
   version: string;
 }
 export interface Outfit {
+  graph_evidence?: {
+    status: string;
+    source?: string;
+    counts: Record<string, number>;
+  };
   id: string;
   title: string;
   occasion: string;

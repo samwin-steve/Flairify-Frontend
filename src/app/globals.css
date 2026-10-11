@@ -3582,3 +3582,17 @@ svg {
 .profile-columns .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .profile-columns .field input,
 .profile-columns .field select { min-width: 0; width: 100%; }
+
+
+/* New words animate once as real SSE chunks arrive; existing words stay still. */
+.stream-word { animation: word-arrive 220ms ease-out both; }
+.streaming-copy::after { content: ""; display: inline-block; width: 5px; height: 1em; margin-left: 4px; vertical-align: -0.12em; border-radius: 3px; background: #B83F69; animation: stream-caret 900ms ease-in-out infinite; }
+@keyframes word-arrive { from { opacity: 0; } to { opacity: 1; } }
+@keyframes stream-caret { 50% { opacity: .25; } }
+.wardrobe-connections { padding: 12px 18px; border-top: 1px solid #EED9E2; background: #FFF8FA; font-size: 13px; line-height: 1.6; }
+.wardrobe-connections > span { font-weight: 600; }
+.wardrobe-connections p { margin: 6px 0; }
+.wardrobe-connections small { color: #74636D; }
+@media (prefers-reduced-motion: reduce) {
+  .stream-word, .streaming-copy::after { animation: none; }
+}

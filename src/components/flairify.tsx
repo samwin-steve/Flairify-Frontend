@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { streamChat } from "@/lib/chat-stream";
 import {
   QueryClient,
   QueryClientProvider,
@@ -154,6 +155,13 @@ function Application() {
   const [convoId, setConvoId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [storeId, setStoreId] = useState("");
+  const chatController = useRef<AbortController | null>(null);
+  const chatRetry = useRef<{ signature: string; key: string } | null>(null);
+  const [streamStatus, setStreamStatus] = useState("");
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
+    null,
+  );
+  useEffect(() => () => chatController.current?.abort(), []);
   const previewLock = useRef(false);
   const previewKeys = useRef(new Map<string, string>());
   const [checkout, setCheckout] = useState<{
@@ -348,6 +356,10 @@ function Application() {
     sessionStorage.removeItem("flairify-sizes");
     sessionStorage.removeItem("flairify-department");
     setDepartment("all");
+    chatController.current?.abort();
+    chatController.current = null;
+    chatRetry.current = null;
+    setBusy(false);
     setSession(false);
     setCheckout(null);
     previewKeys.current.clear();
@@ -358,7 +370,7 @@ function Application() {
     setPage("stylist");
   }
   async function send(text = input) {
-    if (!text.trim() || busy) return;
+    if (!text.trim() || busy || chatController.current) return;
     if (!ready) {
       setOnboarding(true);
       return;
@@ -374,35 +386,84 @@ function Application() {
       created_at: new Date().toISOString(),
     };
     setMessages((old) => [...old, draft]);
-    try {
-      const result = await post<{
-        conversation: Conversation;
-        outfits: Outfit[];
-      }>("/chat", {
-        message: text,
-        conversation_id: convoId,
-        store_id: storeId || null,
-        clothing_size: clothingSize || null,
-        shoe_size: shoeSize || null,
-        department,
+    const controller = new AbortController();
+    chatController.current = controller;
+    setStreamStatus("Checking your wardrobe and preferences…");
+    const payload = {
+      message: text,
+      conversation_id: convoId,
+      store_id: storeId || null,
+      clothing_size: clothingSize || null,
+      shoe_size: shoeSize || null,
+      department,
+    };
+    const signature = JSON.stringify(payload);
+    if (chatRetry.current?.signature !== signature)
+      chatRetry.current = { signature, key: crypto.randomUUID() };
+    const assistantId = draft.id + "-reply";
+    setStreamingMessageId(assistantId);
+    const updateReply = (update: (m: Message) => Message) => {
+      if (chatController.current !== controller) return;
+      setMessages((old) => {
+        const existing = old.find((m) => m.id === assistantId);
+        const reply = update(
+          existing || {
+            id: assistantId,
+            role: "assistant",
+            content: "",
+            outfits: [],
+            created_at: new Date().toISOString(),
+          },
+        );
+        return existing
+          ? old.map((m) => (m.id === assistantId ? reply : m))
+          : [...old, reply];
       });
+    };
+    try {
+      const result = await streamChat(
+        { ...payload, request_id: chatRetry.current!.key },
+        (event) => {
+          if (chatController.current !== controller) return;
+          if (event.type === "status") setStreamStatus(event.message);
+          if (event.type === "text")
+            updateReply((m) => ({ ...m, content: m.content + event.delta }));
+          if (event.type === "outfits")
+            updateReply((m) => ({ ...m, outfits: event.outfits }));
+        },
+        controller.signal,
+      );
+      if (chatController.current !== controller) return;
       setConvoId(result.conversation.id);
       setMessages(result.conversation.messages);
       setActiveLook(result.outfits[0] || null);
+      chatRetry.current = null;
       qc.invalidateQueries({ queryKey: ["conversations"] });
     } catch (e) {
-      setMessages((old) => old.filter((m) => m.id !== draft.id));
+      if (chatController.current !== controller) return;
+      setMessages((old) =>
+        old.filter((m) => m.id !== draft.id && m.id !== assistantId),
+      );
       setInput(text);
       setError((e as Error).message);
     } finally {
-      setBusy(false);
-      setTimeout(
-        () =>
-          bottom.current?.scrollIntoView({ behavior: "smooth", block: "end" }),
-        80,
-      );
+      if (chatController.current === controller) {
+        chatController.current = null;
+        setBusy(false);
+        setStreamStatus("");
+        setStreamingMessageId(null);
+        setTimeout(
+          () =>
+            bottom.current?.scrollIntoView({
+              behavior: "smooth",
+              block: "end",
+            }),
+          80,
+        );
+      }
     }
   }
+
   async function saveLook(outfit: Outfit) {
     await action(async () => {
       await post("/saved/" + outfit.id);
@@ -785,6 +846,7 @@ function Application() {
               setActiveLook(null);
               changePage("stylist");
             }}
+            disabled={busy}
             aria-label="New conversation"
           >
             <Plus size={16} />
@@ -794,6 +856,7 @@ function Application() {
           <button
             className={convoId === c.id ? "selected" : ""}
             key={c.id}
+            disabled={busy}
             onClick={() => {
               setConvoId(c.id);
               setMessages(c.messages);
@@ -1100,7 +1163,26 @@ function Application() {
                               </small>
                             </span>
                           )}
-                          <p>{m.content}</p>
+                          <p
+                            className={
+                              m.id === streamingMessageId
+                                ? "streaming-copy"
+                                : undefined
+                            }
+                            aria-busy={m.id === streamingMessageId}
+                          >
+                            {m.id === streamingMessageId
+                              ? m.content.split(/(\s+)/).map((word, index) =>
+                                  /\S/.test(word) ? (
+                                    <span className="stream-word" key={index}>
+                                      {word}
+                                    </span>
+                                  ) : (
+                                    word
+                                  ),
+                                )
+                              : m.content}
+                          </p>
                           {m.outfits?.map((o, i) => (
                             <LookCard
                               key={o.id}
@@ -1132,10 +1214,15 @@ function Application() {
                       </div>
                     ))}
                     {busy && (
-                      <div className="thinking">
+                      <div
+                        className="thinking"
+                        role="status"
+                        aria-live="polite"
+                      >
                         <span className="stylist-avatar">✧</span>
                         <LoaderCircle size={16} className="spin" />
-                        Checking your wardrobe and available sizes…
+                        {streamStatus ||
+                          "Checking your wardrobe and available sizes…"}
                       </div>
                     )}
                     <div ref={bottom} />
@@ -1783,6 +1870,33 @@ function LookCard({
         <span className="tiny-star">✧</span>
         <p>{outfit.explanation}</p>
       </div>
+      {outfit.graph_evidence?.status === "ready" &&
+        Object.values(outfit.graph_evidence.counts).some(
+          (count) => count > 0,
+        ) && (
+          <div className="wardrobe-connections">
+            <span>Connections in your wardrobe</span>
+            {outfit.products
+              .filter(
+                (product) =>
+                  (outfit.graph_evidence?.counts[product.id] || 0) > 0,
+              )
+              .map((product) => (
+                <p key={product.id}>
+                  {product.name} appears in{" "}
+                  {outfit.graph_evidence!.counts[product.id]} distinct
+                  previously checked{" "}
+                  {outfit.graph_evidence!.counts[product.id] === 1
+                    ? "outfit"
+                    : "outfits"}{" "}
+                  for this occasion.
+                </p>
+              ))}
+            <small>
+              Based on your current confirmed wardrobe · BigQuery Graph
+            </small>
+          </div>
+        )}
       {!outfit.complete && (
         <p className="small-note">
           Partial combination: add missing base pieces or shoes to complete this

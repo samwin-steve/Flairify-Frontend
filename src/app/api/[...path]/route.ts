@@ -14,7 +14,12 @@ async function proxy(
   );
   url.search = req.nextUrl.search;
   const headers = new Headers();
-  for (const key of ["authorization", "content-type", "x-photos-token"]) {
+  for (const key of [
+    "authorization",
+    "content-type",
+    "x-photos-token",
+    "accept",
+  ]) {
     const v = req.headers.get(key);
     if (v) headers.set(key, v);
   }
@@ -26,9 +31,12 @@ async function proxy(
         ? undefined
         : await req.arrayBuffer(),
       cache: "no-store",
-      signal: AbortSignal.timeout(120000),
+      signal: AbortSignal.any([req.signal, AbortSignal.timeout(120000)]),
     });
-    const out = new Headers({ "Cache-Control": "no-store" });
+    const out = new Headers({
+      "Cache-Control": "no-store, no-transform",
+      "X-Accel-Buffering": "no",
+    });
     for (const key of ["content-type", "content-disposition"]) {
       const v = response.headers.get(key);
       if (v) out.set(key, v);

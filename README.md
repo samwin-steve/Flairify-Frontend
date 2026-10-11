@@ -69,3 +69,7 @@ Browse 200 sample options across men’s, women’s and unisex departments. The 
 Latest verification: 14 desktop/mobile Playwright journeys, four Vitest tests, TypeScript and production builds passed. All 190 added deployed image files matched their validated local copies. Live department filtering, refresh, 4XL/EU48 selection and ₹5,000 budget enforcement passed on desktop and Pixel 7 emulation. See the backend’s `docs/live-catalogue-results.json` for the collected evidence.
 
 Stylist and saved-look cards now start with no preview garments selected. Tick owned or new pieces, then **See it on me** queues Google image generation directly. The most recently selected piece replaces conflicting clothing slots. The initial style form and Profile include **Keep my generated outfits in the same background**: unchecked requests a white background; checked keeps the reference setting. Errors link directly to photo or Profile setup. Fitting Room lists the pieces used and background requested.
+
+### Streaming stylist and wardrobe connections
+
+The stylist consumes authenticated SSE from `/api/chat/stream` through the Next.js proxy. Real Gemini text chunks reveal new words with a subtle fade and typing cursor, respecting reduced-motion preferences. Errors restore the message; retries use the same request ID to avoid duplicate completed replies. Outfit cards can display BigQuery Graph evidence for distinct previously checked combinations. See the backend repository's `docs/SEMANTIC_RAG.md` for retrieval, agent modules and deployment details.

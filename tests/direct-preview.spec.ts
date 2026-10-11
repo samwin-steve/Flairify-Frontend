@@ -95,23 +95,27 @@ test("direct multi-piece preview, conflict resolution, refresh and editable back
   await page.route("**/api/media/missing-photo", (route) =>
     route.fulfill({ status: 404, json: { detail: "Test missing photo" } }),
   );
-  await page.route("**/api/chat", (route) =>
+  await page.route("**/api/chat/stream", (route) =>
     route.fulfill({
-      json: {
-        conversation: {
-          id: "preview-test",
-          title: "Preview test",
-          messages: [
-            {
-              id: "answer",
-              role: "assistant",
-              content: "Choose the pieces for your preview.",
-              outfits: [outfit],
-            },
-          ],
-        },
-        outfits: [outfit],
-      },
+      contentType: "text/event-stream",
+      body:
+        "event: done\ndata: " +
+        JSON.stringify({
+          conversation: {
+            id: "preview-test",
+            title: "Preview test",
+            messages: [
+              {
+                id: "answer",
+                role: "assistant",
+                content: "Choose the pieces for your preview.",
+                outfits: [outfit],
+              },
+            ],
+          },
+          outfits: [outfit],
+        }) +
+        "\n\n",
     }),
   );
   await page.route("**/api/jobs", (route) =>
