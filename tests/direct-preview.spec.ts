@@ -82,6 +82,19 @@ test("direct multi-piece preview, conflict resolution, refresh and editable back
     explanation: "Browser test fixtures",
     complete: true,
   };
+  await page.route("**/api/photos", (route) =>
+    route.fulfill({
+      json: {
+        references: [],
+        photos: [
+          { id: "missing-photo", media_id: "missing-photo", source: "upload" },
+        ],
+      },
+    }),
+  );
+  await page.route("**/api/media/missing-photo", (route) =>
+    route.fulfill({ status: 404, json: { detail: "Test missing photo" } }),
+  );
   await page.route("**/api/chat", (route) =>
     route.fulfill({
       json: {
@@ -191,6 +204,21 @@ test("direct multi-piece preview, conflict resolution, refresh and editable back
   const checkbox = page.getByLabel(
     "Keep my generated outfits in the same background",
   );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await expect(
+    page.getByText("Image unavailable", { exact: true }),
+  ).toBeVisible();
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+        .analyze()
+    ).violations,
+  ).toEqual([]);
   await expect(checkbox).not.toBeChecked();
   await checkbox.check();
   await page.getByRole("button", { name: "Save and continue" }).click();

@@ -401,7 +401,7 @@ svg {
   gap: 8px;
   align-items: center;
   justify-content: center;
-  color: #9d7588;
+  color: #74636d;
   min-height: 120px;
   font-size: 11px;
 }
@@ -3576,3 +3576,9 @@ svg {
 .background-preference { background: #fff8fa; border: 1px solid #eed9e2; border-radius: 12px; padding: 16px; }
 .background-preference .fine-print { margin: 8px 0 0; }
 .preview-used-pieces ul { margin: 8px 0; padding-left: 20px; font-size: 13px; line-height: 1.8; }
+
+.profile-columns > div,
+.profile-columns .field { min-width: 0; }
+.profile-columns .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.profile-columns .field input,
+.profile-columns .field select { min-width: 0; width: 100%; }
