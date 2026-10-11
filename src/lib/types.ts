@@ -9,6 +9,12 @@ export interface WardrobeItem {
   material: string | null;
   size: string | null;
   image: string;
+  generated_image?: string | null;
+  generated_image_model?: string | null;
+  generated_image_version?: string | null;
+  shop_image_job_id?: string | null;
+  shop_image_status?: string | null;
+  shop_image_error?: string | null;
   source_photo_id: string | null;
   box: Box | null;
   uncertainty: string[];

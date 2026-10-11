@@ -785,9 +785,9 @@ function Application() {
       <div className="wardrobe-mini-grid">
         {(summaryLook?.owned || confirmed).slice(0, 4).map((w) => (
           <div key={w.id} className="mini-garment">
-            <Media src={w.image} alt={w.name} />
+            <Media src={w.generated_image || w.image} alt={w.name} />
             <strong>{w.name}</strong>
-            <small>{w.colour}</small>
+            <small>{w.colour}{w.generated_image ? " · AI-generated image" : ""}</small>
           </div>
         ))}
       </div>
@@ -1582,11 +1582,11 @@ function LookCard({
         {outfit.owned.map((w) => (
           <div className="look-piece" key={w.id}>
             <div className="look-image">
-              <Media src={w.image} alt={w.name} />
+              <Media src={w.generated_image || w.image} alt={w.name} />
               <span className="piece-label owned">Owned</span>
             </div>
             <strong>{w.name}</strong>
-            <span>Already yours</span>
+            <span>Already yours{w.generated_image ? " · AI-generated image" : ""}</span>
           </div>
         ))}
         {outfit.products.map((p) => (

@@ -178,7 +178,8 @@ export function ProfileForm({
       </label>
       <label className="check-line">
         <input type="checkbox" {...form.register("processing")} />I agree to
-        process my selected photos with Google Cloud AI when connected
+        process my selected photos with Google Cloud AI to identify clothes and
+        create shop-style garment images when connected
       </label>
       <p className="fine-print">
         Sizes come from you. Photos do not give us accurate body measurements.
@@ -557,6 +558,23 @@ export function GarmentEditor({
 }) {
   const [value, setValue] = useState(item);
   const [error, setError] = useState("");
+  const [imageBusy, setImageBusy] = useState(false);
+  const qc = useQueryClient();
+  async function imageAction(action: "create" | "retry" | "remove") {
+    setImageBusy(true);
+    setError("");
+    try {
+      if (action === "create") await post(`/wardrobe/${item.id}/shop-image`);
+      if (action === "retry") await post(`/jobs/${item.shop_image_job_id}/retry`);
+      if (action === "remove") await del(`/jobs/${item.shop_image_job_id}`);
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      onSaved();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setImageBusy(false);
+    }
+  }
   async function save() {
     try {
       await put("/wardrobe/" + value.id, value);
@@ -574,7 +592,38 @@ export function GarmentEditor({
       description="Confirm only what you own. Correct anything that doesn’t look right."
     >
       <div className="editor-grid">
-        <Media src={item.image} alt={item.name} className="editor-image" />
+        <div className="garment-evidence">
+          {item.generated_image && (
+            <figure>
+              <Media src={item.generated_image} alt={`AI-generated shop-style ${item.name}`} className="editor-image" />
+              <figcaption>AI-generated shop-style image</figcaption>
+            </figure>
+          )}
+          <figure>
+            <Media src={item.image} alt={`Original crop of ${item.name}`} className="editor-image" />
+            <figcaption>{item.evidence === "original_crop" ? "Original photo crop · Evidence" : "Garment reference"}</figcaption>
+          </figure>
+          {item.evidence === "original_crop" && (
+            <div className="form-stack">
+              <p className="fine-print">Shop-style images are AI reconstructions. Compare colour and details with your original; hidden details may differ.</p>
+              {["queued", "running"].includes(item.shop_image_status || "") && (
+                <p role="status" className="fine-print">Gemini is preparing your shop-style image. You can confirm this garment now.</p>
+              )}
+              {item.shop_image_status === "failed" && (
+                <>
+                  <p role="status" className="fine-print">{item.shop_image_error || "The shop-style image could not be created. Your original crop is available."}</p>
+                  <Button size="sm" variant="outline" disabled={imageBusy} onClick={() => imageAction("retry")}>Retry shop-style image</Button>
+                </>
+              )}
+              {!item.shop_image_job_id && !item.generated_image && (
+                <Button size="sm" variant="outline" disabled={imageBusy} onClick={() => imageAction("create")}>Create shop-style image</Button>
+              )}
+              {item.shop_image_job_id && item.shop_image_status !== "cancelled" && (
+                <Button size="sm" variant="ghost" disabled={imageBusy} onClick={() => imageAction("remove")}>Keep original only</Button>
+              )}
+            </div>
+          )}
+        </div>
         <div className="form-stack">
           <label className="field">
             Garment name
@@ -726,8 +775,9 @@ export function WardrobeReview({
               onClick={() => setEditing(item)}
               aria-label={"Edit " + item.name}
             >
-              <Media src={item.image} alt={item.name} />
+              <Media src={item.generated_image || item.image} alt={item.name} />
               {item.sample && <span className="image-badge">Sample</span>}
+              {item.generated_image && <span className="image-badge">AI-generated</span>}
             </button>
             <div className="garment-info">
               <button className="garment-name" onClick={() => setEditing(item)}>
@@ -736,6 +786,8 @@ export function WardrobeReview({
               <p>
                 {item.colour} · {item.category}
               </p>
+              {["queued", "running"].includes(item.shop_image_status || "") && <p className="fine-print" role="status">Creating shop-style image…</p>}
+              {item.shop_image_status === "failed" && <p className="fine-print">Original crop · Image generation needs attention</p>}
               <div className="garment-actions">
                 <button
                   className={
@@ -797,7 +849,7 @@ export function WardrobeReview({
       {editing && (
         <GarmentEditor
           key={editing.id}
-          item={editing}
+          item={items.find((item) => item.id === editing.id) || editing}
           onClose={() => setEditing(null)}
           onSaved={onRefresh}
         />

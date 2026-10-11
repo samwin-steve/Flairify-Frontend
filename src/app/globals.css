@@ -3506,3 +3506,9 @@ svg {
     padding: 14px;
   }
 }
+
+/* Keep the generated illustration next to its original evidence in garment review. */
+.garment-evidence { min-width: 0; }
+.garment-evidence figure { margin: 0 0 16px; }
+.garment-evidence .editor-image { width: 100%; height: auto; max-height: 270px; object-fit: contain; background: #fff; }
+.garment-evidence figcaption { margin-top: 8px; color: var(--muted); font-size: 12px; line-height: 1.5; }
