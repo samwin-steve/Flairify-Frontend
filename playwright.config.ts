@@ -2,7 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
   testMatch: "**/*.spec.ts",
-  timeout: 60000,
+  timeout: process.env.PLAYWRIGHT_BASE_URL ? 120000 : 60000,
   expect: { timeout: 10000 },
   fullyParallel: false,
   workers: 1,

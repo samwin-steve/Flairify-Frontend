@@ -574,6 +574,7 @@ export function GarmentEditor({
           <label className="field">
             Category
             <select
+              aria-label="Category"
               value={value.category}
               onChange={(e) => setValue({ ...value, category: e.target.value })}
             >
@@ -846,7 +847,11 @@ export function Onboarding({
   async function finish() {
     try {
       await post("/onboarding/complete");
-      qc.invalidateQueries();
+      // Keep the first chat gated until the confirmed server state has arrived.
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["profile"] }),
+        qc.invalidateQueries({ queryKey: ["wardrobe"] }),
+      ]);
       onComplete();
     } catch (e) {
       setError((e as Error).message);

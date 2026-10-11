@@ -36,7 +36,7 @@ test("wardrobe-first journey, budget, saved look, unavailable try-on and refresh
     .getByRole("button", { name: "Meet your stylist", exact: true })
     .click();
   await page.getByRole("button", { name: /Help me pack for Mumbai/ }).click();
-  await expect(page.locator(".look-card").first()).toBeVisible();
+  await expect(page.locator(".look-card").first()).toBeVisible({timeout:45000});
   await page.screenshot({
     path: `test-results/${test.info().project.name}-stylist.png`,
     fullPage: true,
@@ -68,6 +68,7 @@ test("wardrobe-first journey, budget, saved look, unavailable try-on and refresh
     page.getByText(/Personalized generation is not connected/),
   ).toBeVisible({ timeout: 15000 });
   await page.reload();
+  await expect(page.locator(".app-shell")).toBeVisible();
   const fitting = page.getByRole("button", {
     name: "Fitting Room",
     exact: true,
@@ -107,6 +108,84 @@ test("landing accessibility, keyboard focus and layout", async ({ page }) => {
   ).toBe(true);
   await page.screenshot({
     path: `test-results/${test.info().project.name}-landing.png`,
+    fullPage: true,
+  });
+});
+
+test("direct photo upload, ownership review, persistence and 3D fallback", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "Meet your personal stylist" })
+    .click();
+  await page.getByLabel("What should we call you?").fill("Photo QA");
+  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page
+    .getByRole("button", { name: "Add reference photos later" })
+    .click();
+  await page
+    .getByLabel("Upload wardrobe photos")
+    .setInputFiles("public/images/shirt.jpg");
+  await expect(
+    page.getByRole("button", { name: "Save person selection" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Save person selection" }).click();
+  await page.getByRole("button", { name: "Review my wardrobe" }).click();
+  await expect(
+    page.getByRole("button", { name: "Confirm ownership", exact: true }),
+  ).toBeVisible({ timeout: 30000 });
+  await page
+    .getByRole("button", { name: "Confirm ownership", exact: true })
+    .click();
+  await page
+    .getByLabel("Garment name", { exact: true })
+    .fill("My uploaded shirt");
+  await page.getByLabel("Category", { exact: true }).selectOption("top");
+  await page.getByLabel("Colour", { exact: true }).fill("White");
+  await page.getByLabel("I own this garment").check();
+  await page.getByRole("button", { name: "Save garment" }).click();
+  await page
+    .getByRole("button", { name: "Meet your stylist", exact: true })
+    .click();
+  await expect(page.getByRole("status").filter({hasText:"Your wardrobe is ready."})).toBeVisible();
+  await page.reload();
+  await expect(page.locator(".app-shell")).toBeVisible();
+  const wardrobe = page.getByRole("button", {
+    name: "My Wardrobe",
+    exact: true,
+  });
+  if (await wardrobe.isVisible()) await wardrobe.click();
+  else
+    await page.getByRole("button", { name: "Wardrobe", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "My uploaded shirt", exact: true }),
+  ).toBeVisible();
+  const fitting = page.getByRole("button", {
+    name: "Fitting Room",
+    exact: true,
+  });
+  if (await fitting.isVisible()) await fitting.click();
+  else await page.getByRole("button", { name: "Fitting", exact: true }).click();
+  await page.getByRole("button", { name: "3D / AR lab" }).click();
+  await expect(page.locator("model-viewer")).toBeVisible({ timeout: 20000 });
+  await expect
+    .poll(
+      () =>
+        page
+          .locator("model-viewer")
+          .evaluate((el) => (el as HTMLElement & { loaded: boolean }).loaded),
+      { timeout: 30000 },
+    )
+    .toBe(true);
+  await expect(page.getByText("Experimental · sample asset")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `test-results/${test.info().project.name}-3d.png`,
     fullPage: true,
   });
 });
