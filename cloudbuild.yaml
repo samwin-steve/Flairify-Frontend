@@ -1,0 +1,26 @@
+steps:
+  - id: test-and-build
+    name: gcr.io/cloud-builders/docker
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/flairify/frontend:$BUILD_ID', '.']
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    args: ['push', '${_REGION}-docker.pkg.dev/$PROJECT_ID/flairify/frontend:$BUILD_ID']
+  - id: deploy
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        BACKEND_URL=$$(gcloud run services describe flairify-api --region=${_REGION} --format='value(status.url)')
+        test -n "$$BACKEND_URL"
+        gcloud run deploy flairify-web --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/flairify/frontend:$BUILD_ID --region=${_REGION} --service-account=flairify-frontend@$PROJECT_ID.iam.gserviceaccount.com --no-invoker-iam-check --min-instances=0 --max=2 --max-instances=2 --concurrency=40 --cpu=1 --memory=512Mi --port=8080 --update-env-vars="BACKEND_URL=$$BACKEND_URL,FIREBASE_API_KEY=${_FIREBASE_API_KEY},FIREBASE_AUTH_DOMAIN=${_FIREBASE_AUTH_DOMAIN},FIREBASE_PROJECT_ID=$PROJECT_ID,FIREBASE_APP_ID=${_FIREBASE_APP_ID}" --quiet
+images: ['${_REGION}-docker.pkg.dev/$PROJECT_ID/flairify/frontend:$BUILD_ID']
+substitutions:
+  _REGION: us-central1
+  _FIREBASE_API_KEY: ''
+  _FIREBASE_AUTH_DOMAIN: ''
+  _FIREBASE_APP_ID: ''
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_MEDIUM
+timeout: 1200s

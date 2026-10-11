@@ -1,0 +1,4 @@
+flairify-form.glb is an original procedural studio mannequin made for Flairify.
+Dedicated to the public domain under CC0 1.0 Universal.
+https://creativecommons.org/publicdomain/zero/1.0/
+No face or body likeness of any real person is represented. This is a development sample, not a customer avatar.
