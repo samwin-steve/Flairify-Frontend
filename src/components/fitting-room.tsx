@@ -9,10 +9,12 @@ import {
   Download,
   LoaderCircle,
   RotateCcw,
+  ShoppingBag,
   Trash2,
 } from "lucide-react";
 import { api, post, del, mediaBlob } from "@/lib/api";
-import type { Job, Reference, Photo, Config } from "@/lib/types";
+import type { Job, Reference, Photo, Config, Product } from "@/lib/types";
+import { money } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { Media, PrivateVideo } from "./media";
 import { UploadZone } from "./onboarding";
@@ -122,11 +124,13 @@ function ModelViewer() {
 
 export function FittingRoom({
   onShop,
+  onBuy,
   onWardrobe,
   showReferences = false,
 }: {
   showReferences?: boolean;
   onShop: () => void;
+  onBuy: (products: Product[], previewJobId: string) => void;
   onWardrobe: () => void;
 }) {
   const qc = useQueryClient();
@@ -248,25 +252,14 @@ export function FittingRoom({
                   (j.kind === "video" ? (
                     <PrivateVideo id={j.result.media_id} />
                   ) : (
-                    <div className="preview-comparison">
-                      {j.result.reference_media_id && (
-                        <figure>
-                          <figcaption>Your uploaded photo</figcaption>
-                          <Media
-                            src={"media:" + j.result.reference_media_id}
-                            alt="Original reference photo"
-                          />
-                        </figure>
-                      )}
-                      <figure>
-                        <figcaption>Your Google AI preview</figcaption>
-                        <Media
-                          src={"media:" + j.result.media_id}
-                          alt="AI-generated style visualization"
-                          className="preview-image"
-                        />
-                      </figure>
-                    </div>
+                    <figure className="generated-preview">
+                      <figcaption>Your Google AI preview</figcaption>
+                      <Media
+                        src={"media:" + j.result.media_id}
+                        alt="AI-generated style visualization"
+                        className="preview-image"
+                      />
+                    </figure>
                   ))}
                 {!j.result?.pieces?.length && j.result?.product_name && (
                   <p>
@@ -308,6 +301,11 @@ export function FittingRoom({
                 {j.result?.label && (
                   <p className="fine-print">{j.result.label}</p>
                 )}
+                {j.kind === "try_on" &&
+                  j.status === "succeeded" &&
+                  j.result?.media_id && (
+                    <PreviewShopping jobId={j.id} onBuy={onBuy} />
+                  )}
                 <div className="button-row">
                   {j.status === "succeeded" && !j.result?.accepted && (
                     <Button
@@ -483,5 +481,69 @@ export function FittingRoom({
       )}
       {tab === "3d" && <ModelViewer />}
     </div>
+  );
+}
+
+function PreviewShopping({
+  jobId,
+  onBuy,
+}: {
+  jobId: string;
+  onBuy: (products: Product[], previewJobId: string) => void;
+}) {
+  const shopping = useQuery({
+    queryKey: ["preview-shopping", jobId],
+    queryFn: () =>
+      api<{ products: Product[]; unavailable: { id: string; name: string }[] }>(
+        `/jobs/${jobId}/shopping`,
+      ),
+    retry: false,
+  });
+  return (
+    <section className="preview-shopping" aria-label="Shop this look">
+      <h4>Shop this look</h4>
+      {shopping.isLoading && (
+        <p role="status">Finding your recommended items…</p>
+      )}
+      {shopping.error && (
+        <p role="alert" className="error">
+          {shopping.error.message}{" "}
+          <button className="text-link" onClick={() => shopping.refetch()}>
+            Try again
+          </button>
+        </p>
+      )}
+      {!!shopping.data?.unavailable.length && (
+        <p className="small-note">
+          Unavailable and not included:{" "}
+          {shopping.data.unavailable.map((p) => p.name).join(", ")}.
+        </p>
+      )}
+      {!!shopping.data?.products.length && (
+        <>
+          <p className="fine-print">
+            All available new items from this recommendation. Confirm your sizes
+            and selections at checkout.
+          </p>
+          <ul className="preview-shopping-items">
+            {shopping.data.products.map((p) => (
+              <li key={p.id}>
+                <span>{p.name}</span>
+                <strong>{money(p.price)}</strong>
+              </li>
+            ))}
+          </ul>
+          <Button onClick={() => onBuy(shopping.data!.products, jobId)}>
+            <ShoppingBag size={17} />
+            Buy
+          </Button>
+        </>
+      )}
+      {shopping.data && !shopping.data.products.length && (
+        <p className="fine-print">
+          There are no available new items to buy in this look.
+        </p>
+      )}
+    </section>
   );
 }

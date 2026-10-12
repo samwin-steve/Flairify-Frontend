@@ -75,15 +75,14 @@ export function Inventory({
       <div className="eyebrow">A THOUGHTFUL ADDITION</div>
       <h1>Find your next favourite.</h1>
       <p className="page-subtitle">
-        Browse, try a piece on your photo, or place a mock order. No
-        conversation needed.
+        Browse, try a piece on your photo, or buy directly. No conversation
+        needed.
       </p>
       <div className="notice">
         <p>
           Sample items use archived product photos with simulated prices, sizes
           and stock. They are not live retailer offers. Seller listings use
-          supplied details. All purchases are mock orders: no payment or
-          delivery.
+          supplied details.
         </p>
       </div>
       <Button variant="outline" onClick={onSell}>
@@ -214,7 +213,7 @@ export function Inventory({
                 </p>
                 <Button onClick={() => onBuy(p)} disabled={!variants.length}>
                   <ShoppingBag size={16} />
-                  Mock buy
+                  Buy
                 </Button>
                 <Button
                   variant="outline"

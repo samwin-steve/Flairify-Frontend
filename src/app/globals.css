@@ -3247,26 +3247,46 @@ svg {
   color: #b83f69;
   min-height: 32px;
 }
-.preview-comparison {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-.preview-comparison figure {
+.generated-preview {
   margin: 0;
   min-width: 0;
 }
-.preview-comparison figcaption {
+.generated-preview figcaption {
   font-size: 12px;
   color: #74636d;
   margin-bottom: 8px;
 }
-.preview-comparison img {
+.generated-preview img {
   width: 100%;
-  max-height: 380px;
+  max-height: 550px;
   object-fit: contain;
   border-radius: 12px;
   background: #f8f1ed;
+}
+.preview-shopping {
+  padding: 18px 0;
+  margin: 16px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.preview-shopping-items {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 18px;
+}
+.preview-shopping-items li {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 13px;
+}
+.preview-shopping-items li span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.preview-shopping-items li strong {
+  flex-shrink: 0;
 }
 .source-photo-grid {
   display: grid;

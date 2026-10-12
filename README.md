@@ -50,12 +50,12 @@ Downloaded clothing/editorial images are stored locally in `public/images`; sour
 
 [Backend documentation](https://github.com/samwin-steve/Flairify-Backend/tree/main/docs) includes architecture, integration setup, limitations, 3D research, deployment, evaluation, demo script and submission material.
 
-## Seller Studio and mock shopping
+## Seller Studio and shopping
 
 - **Seller Studio** is available in the desktop navigation and mobile navigation drawer. Approved sellers add a photo, price, sizes, and stock through **Add clothes**. Owners can approve access requests. Shared inventory edits require a verified owner or seller role; the deployed anonymous demo cannot unlock them.
-- **Inventory → Mock buy** works without wardrobe onboarding or chat. New users can choose **Browse clothes first** during onboarding. Personal stylist conversations require saved shopping sizes; wardrobe pairing is optional.
-- **Mock buy new pieces** on a stylist look uses the same reviewed checkout. Only new products are charged in the displayed mock total; owned pieces are excluded.
-- **My Orders** shows persisted order snapshots after refresh. Checkout explicitly acknowledges no payment or delivery. Sellers see their listed items in **Mock orders received**. Stock is checked but never reserved or decremented for a mock purchase.
+- **Inventory → Buy** works without wardrobe onboarding or chat. New users can choose **Browse clothes first** during onboarding. Personal stylist conversations require saved shopping sizes; wardrobe pairing is optional.
+- **Buy** on a stylist look uses the same reviewed checkout. Only new products are included in the displayed total; owned pieces are excluded.
+- **My Orders** shows persisted order snapshots after refresh. Checkout requires confirmation of the items, sizes and quantities and states that no payment is required. Sellers see their listed items in **Orders received**. Orders are saved without payment, shipping, stock reservation or stock decrement.
 - Sample listings remain labeled. New seller listings are shown once their backend indexing job succeeds. Adding a listing makes it eligible for matching recommendations; it does not guarantee inclusion in every look.
 
 Local browser verification covers direct checkout before onboarding, a stylist checkout, order persistence, photographed seller listings, stock updates, desktop/mobile overflow, and accessibility scans of the new dialogs. Run the backend with `ENABLE_DEMO_ADMIN=true` and `DEMO_ADMIN_KEY=test-admin-key` for the local seller test. The seller test is skipped when `PLAYWRIGHT_BASE_URL` points at a deployment because public demo administrator access is disabled there; real signed-in seller access is checked separately.
@@ -80,6 +80,12 @@ Previous streaming-release verification: **17 Vitest tests and 18 Playwright jou
 
 The chat has a **Pair with my wardrobe** switch, initially off, and a link to **Shopping preferences**. It no longer asks users to select department and sizes repeatedly. Core shopping settings persist even when optional style/colour memory is disabled. Photo onboarding has **Start shopping without photos**. Checkout starts with the recommended or saved available size/store and keeps explicit confirmation. Recommendations prioritize occasion relevance and different main garments; suitable owned pieces are optional, never compulsory. See the backend’s `docs/RECOMMENDATION_QUALITY.md` for collected checks and remaining limitations.
 
-Latest local verification (12 October 2026): **21 Vitest tests, 20 desktop/mobile Playwright journeys, TypeScript and production compilation passed**. The backend’s `docs/VERIFICATION.md` records real Google model results and the distinction between local/live-service probes and deployed checks.
+Latest local verification (12 October 2026): **21 Vitest tests, 22 desktop/mobile Playwright journeys, TypeScript and production compilation passed**. The backend’s `docs/VERIFICATION.md` records real Google model results and the distinction between local/live-service probes and deployed checks.
 
-The 12 October release is deployed as `flairify-web-00014-hdq` (source `7185105`). A fresh signed-in browser verified no-photo onboarding, persisted shopping settings, real Gemini/Firestore recommendations, incremental text rendering, restored wardrobe defaults, checkout confirmation, and zero tested Axe violations on desktop/mobile. The mobile document stayed within 393px. See [deployed evidence](https://github.com/samwin-steve/Flairify-Backend/blob/main/docs/live-occasion-deployed-results.json).
+The earlier saved-preferences release was deployed as `flairify-web-00014-hdq` (source `7185105`). A fresh signed-in browser verified no-photo onboarding, persisted shopping settings, real Gemini/Firestore recommendations, incremental text rendering, restored wardrobe defaults, checkout confirmation, and zero tested Axe violations on desktop/mobile. The mobile document stayed within 393px. See [deployed evidence](https://github.com/samwin-steve/Flairify-Backend/blob/main/docs/live-occasion-deployed-results.json).
+
+### Fitting Room shopping
+
+Completed preview cards show only the generated image. Original photos remain manageable in the separate Reference photos tab. **Shop this look → Buy** opens checkout with all available new products from the original recommendation, including recommended products not selected for generation. Owned garments are excluded. Standalone inventory previews offer their selected products. Unavailable products are identified and omitted; prices, sizes and stock are checked again during checkout. The order is saved privately and restores in My Orders after refresh.
+
+The local Fitting Room browser tests use explicitly labeled media fixtures, not new AI generations. They exercise real order APIs, owner isolation, full recommendation selection, desktop/mobile accessibility rules and layout. The existing Google image-generation providers were unchanged.

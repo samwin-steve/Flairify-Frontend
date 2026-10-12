@@ -161,7 +161,7 @@ export function Admin({
           <p>
             Add product photos, sizes, prices and store stock. Once indexed,
             your listings appear in Inventory and can be considered by the
-            stylist. Review saved mock orders here too.
+            stylist. Review saved orders here too.
           </p>
           {profile.demo ? (
             <p>
@@ -238,8 +238,7 @@ export function Admin({
       </p>
       <div className="notice">
         <p>
-          All orders on Flairify are mock purchases. They are saved for review,
-          with no payment, delivery, or stock reservation.
+          Review and manage orders for your collection.
           {profile.demo
             ? " You are editing only your private demo catalogue."
             : " New listings are indexed automatically for Inventory and stylist recommendations."}
@@ -408,7 +407,7 @@ export function Admin({
             {j.error && <span className="error">{j.error}</span>}
           </div>
         ))}
-      <h2>Mock orders received</h2>
+      <h2>Orders received</h2>
       <p className="small-note">
         {profile.admin
           ? "Orders across the catalogue."
@@ -422,7 +421,7 @@ export function Admin({
       )}
       <OrderList orders={incoming.data?.orders || []} seller={!profile.admin} />
       {!incoming.isLoading && !incoming.data?.orders.length && (
-        <p className="small-note">No mock orders yet.</p>
+        <p className="small-note">No orders yet.</p>
       )}
       {profile.admin && !profile.demo && (
         <section className="seller-requests">

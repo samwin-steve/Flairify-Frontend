@@ -219,5 +219,5 @@ export interface MockOrder extends OrderQuote {
   id: string;
   status: string;
   created_at: string;
-  source: "inventory" | "stylist";
+  source: "inventory" | "stylist" | "fitting_room";
 }

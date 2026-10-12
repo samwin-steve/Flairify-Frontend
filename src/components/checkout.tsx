@@ -20,11 +20,13 @@ import { Media } from "./media";
 export function Checkout({
   products,
   outfitId,
+  previewJobId,
   onClose,
   onPlaced,
 }: {
   products: Product[];
   outfitId?: string;
+  previewJobId?: string;
   onClose: () => void;
   onPlaced: (order: MockOrder) => void;
 }) {
@@ -78,11 +80,12 @@ export function Checkout({
     items.every((i) => i.variant_id && i.store_id);
   const body = {
     items,
-    source: outfitId ? "stylist" : "inventory",
+    source: previewJobId ? "fitting_room" : outfitId ? "stylist" : "inventory",
     outfit_id: outfitId || null,
+    preview_job_id: previewJobId || null,
   };
   const quote = useQuery({
-    queryKey: ["order-quote", items, outfitId],
+    queryKey: ["order-quote", items, outfitId, previewJobId],
     queryFn: () => post<OrderQuote>("/orders/quote", body),
     enabled: valid,
     retry: false,
@@ -122,18 +125,15 @@ export function Checkout({
     <Modal
       open
       onOpenChange={(v) => !v && !busy && onClose()}
-      title="Your mock checkout"
-      description="Confirm your sizes, colours and store before placing the mock order. No payment or delivery will take place."
+      title="Your checkout"
+      description="Confirm your sizes, colours and store before placing your order."
       wide
     >
       <div className="notice">
         <ShoppingBag size={20} />
-        <p>
-          This is a mock purchase. Your order will be saved, but no money is
-          charged, no stock is reserved, and nothing is shipped.
-        </p>
+        <p>Your order will be saved to My Orders. No payment is required.</p>
       </div>
-      {outfitId && (
+      {(outfitId || previewJobId) && (
         <p className="small-note">
           Only new pieces from this look are included. Clothes you already own
           stay in your wardrobe.
@@ -276,7 +276,7 @@ export function Checkout({
         </p>
       )}
       <div className="checkout-total">
-        <span>Mock order total</span>
+        <span>Order total</span>
         <strong>
           {quote.isFetching
             ? "Checking…"
@@ -292,7 +292,7 @@ export function Checkout({
           disabled={busy}
           onChange={(e) => setAcknowledged(e.target.checked)}
         />
-        I understand this is a mock order with no payment or delivery.
+        I confirm the items, sizes and quantities.
       </label>
       <div className="button-row">
         <Button
@@ -307,7 +307,7 @@ export function Checkout({
           }
         >
           <PackageCheck size={17} />
-          {busy ? "Saving your order…" : "Place mock order"}
+          {busy ? "Saving your order…" : "Buy"}
         </Button>
         <Button variant="ghost" disabled={busy} onClick={onClose}>
           Keep browsing
@@ -330,13 +330,15 @@ export function OrderList({
         <article className="white-panel order-card" key={order.id}>
           <div className="section-line">
             <div>
-              <span className="pill">Mock order placed</span>
+              <span className="pill">Order placed</span>
               <h3>{order.id}</h3>
               <p className="small-note">
                 {new Date(order.created_at).toLocaleString()} ·{" "}
-                {order.source === "stylist"
-                  ? "From the stylist"
-                  : "From Inventory"}
+                {order.source === "fitting_room"
+                  ? "From the Fitting Room"
+                  : order.source === "stylist"
+                    ? "From the stylist"
+                    : "From Inventory"}
               </p>
             </div>
             <strong>{money(order.total)}</strong>
@@ -360,9 +362,8 @@ export function OrderList({
             </div>
           ))}
           <p className="fine-print">
-            {seller ? "Your listed items only. " : ""}No payment, delivery, or
-            stock reservation. Prices shown were saved when the order was
-            placed.
+            {seller ? "Your listed items only. " : ""}Prices shown were saved
+            when the order was placed.
           </p>
         </article>
       ))}
@@ -379,9 +380,7 @@ export function Orders({ onShop }: { onShop: () => void }) {
     <main className="page-content">
       <span className="eyebrow">A LITTLE SHOPPING NOTEBOOK</span>
       <h1>My orders.</h1>
-      <p className="page-subtitle">
-        Your mock purchases, saved in one place. No payments or deliveries.
-      </p>
+      <p className="page-subtitle">Your purchases, saved in one place.</p>
       {orders.isLoading && <p role="status">Loading your orders…</p>}
       {orders.error && (
         <p className="error" role="alert">
@@ -392,10 +391,7 @@ export function Orders({ onShop }: { onShop: () => void }) {
         <div className="empty-state">
           <ShoppingBag size={32} />
           <h2>Your next favourite is waiting.</h2>
-          <p>
-            Browse and place a mock order directly. No stylist conversation
-            needed.
-          </p>
+          <p>Browse and buy directly. No stylist conversation needed.</p>
           <Button onClick={onShop}>Explore inventory</Button>
         </div>
       )}

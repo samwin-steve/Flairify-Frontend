@@ -29,19 +29,19 @@ test("direct mock purchase without wardrobe saves order and no payment", async (
 }) => {
   await start(page);
   await page
-    .getByRole("button", { name: "Mock buy", exact: true })
+    .getByRole("button", { name: "Buy", exact: true })
     .first()
     .click();
   await expect(
-    page.getByRole("heading", { name: "Your mock checkout" }),
+    page.getByRole("heading", { name: "Your checkout" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Place mock order", exact: true }),
+    page.getByRole("button", { name: "Buy", exact: true }),
   ).toBeDisabled();
   await page.getByLabel(/^Quantity for/).selectOption("2");
   await page
     .getByLabel(
-      "I understand this is a mock order with no payment or delivery.",
+      "I confirm the items, sizes and quantities.",
     )
     .check();
   const axe = await new AxeBuilder({ page })
@@ -63,7 +63,7 @@ test("direct mock purchase without wardrobe saves order and no payment", async (
     fullPage: true,
   });
   await page
-    .getByRole("button", { name: "Place mock order", exact: true })
+    .getByRole("button", { name: "Buy", exact: true })
     .click();
   await expect(page.getByRole("heading", { name: "My orders." })).toBeVisible();
   await expect(page.locator(".order-card")).toHaveCount(1);
@@ -142,14 +142,14 @@ test("seller can add photographed clothes, update stock, index and receive mock 
   await navigate(page, "Inventory");
   await page.getByLabel("Search inventory").fill("Seller QA white shirt");
   await expect(page.locator(".inventory-card")).toHaveCount(1);
-  await page.getByRole("button", { name: "Mock buy", exact: true }).click();
+  await page.getByRole("button", { name: "Buy", exact: true }).click();
   await page
     .getByLabel(
-      "I understand this is a mock order with no payment or delivery.",
+      "I confirm the items, sizes and quantities.",
     )
     .check();
   await page
-    .getByRole("button", { name: "Place mock order", exact: true })
+    .getByRole("button", { name: "Buy", exact: true })
     .click();
   await expect(page.locator(".order-card")).toContainText("₹799");
   await navigate(page, "Seller Studio");

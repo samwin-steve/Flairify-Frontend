@@ -88,7 +88,7 @@ test("saved shopping preferences, optional wardrobe, relevant distinct occasion 
   await page.getByRole("button", { name: "Send message" }).click();
   await expect(page.locator(".look-card").first()).toBeVisible();
   await page
-    .getByRole("button", { name: "Mock buy new pieces", exact: true })
+    .getByRole("button", { name: "Buy", exact: true })
     .first()
     .click();
   const selection = page

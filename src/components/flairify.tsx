@@ -167,6 +167,7 @@ function Application() {
   const [checkout, setCheckout] = useState<{
     products: Product[];
     id?: string;
+    previewJobId?: string;
   } | null>(null);
   const [activeLook, setActiveLook] = useState<Outfit | null>(null);
   const [includeWardrobe, setIncludeWardrobe] = useState(false);
@@ -1432,6 +1433,9 @@ function Application() {
         {page === "orders" && <Orders onShop={() => changePage("inventory")} />}
         {page === "fitting" && (
           <FittingRoom
+            onBuy={(products, previewJobId) =>
+              setCheckout({ products, previewJobId })
+            }
             key={referenceTab ? "references" : "previews"}
             showReferences={referenceTab}
             onShop={() => changePage("inventory")}
@@ -1602,11 +1606,12 @@ function Application() {
         <Checkout
           products={checkout.products}
           outfitId={checkout.id}
+          previewJobId={checkout.previewJobId}
           onClose={() => setCheckout(null)}
           onPlaced={() => {
             setCheckout(null);
             changePage("orders");
-            setToast("Mock order placed. No payment was taken.");
+            setToast("Order placed.");
           }}
         />
       )}
@@ -1867,7 +1872,7 @@ function LookCard({
           disabled={!outfit.products.length}
         >
           <ShoppingBag size={15} />
-          Mock buy new pieces
+          Buy
         </Button>
         <Button size="sm" onClick={onSelect}>
           Outfit details <ChevronRight size={15} />

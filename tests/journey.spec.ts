@@ -77,7 +77,7 @@ test("wardrobe-first journey, budget, saved look, sign-in-required try-on and re
     page.getByRole("button", { name: "Sign in for real previews" }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Mock buy new pieces", exact: true })
+    .getByRole("button", { name: "Buy", exact: true })
     .first()
     .click();
   await expect(
@@ -87,11 +87,11 @@ test("wardrobe-first journey, budget, saved look, sign-in-required try-on and re
   ).toBeVisible();
   await page
     .getByLabel(
-      "I understand this is a mock order with no payment or delivery.",
+      "I confirm the items, sizes and quantities.",
     )
     .check();
   await page
-    .getByRole("button", { name: "Place mock order", exact: true })
+    .getByRole("button", { name: "Buy", exact: true })
     .click();
   await expect(page.locator(".order-card")).toContainText("From the stylist");
   await page.reload();
