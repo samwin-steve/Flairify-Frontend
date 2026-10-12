@@ -91,3 +91,9 @@ Completed preview cards show only the generated image. Original photos remain ma
 The local Fitting Room browser tests use explicitly labeled media fixtures, not new AI generations. They exercise real order APIs, owner isolation, full recommendation selection, desktop/mobile accessibility rules and layout. The existing Google image-generation providers were unchanged.
 
 This update is live as `flairify-web-00015-q2g` (source `05aaba9`). Deployed desktop and Pixel 7 checks confirmed the preview-only card, checkout with all three recommended new products, saved orders after refresh, zero tested Axe violations and no horizontal overflow. The private verification fixture and orders were removed afterward. See [deployed checks](https://github.com/samwin-steve/Flairify-Backend/blob/main/docs/live-fitting-shopping-results.json).
+
+### Conversational stylist
+
+The Stylist restores the last open chat after refresh and exposes all chat history. Use **Refine this look**, or refer to “the second look,” then request a new colour, a variation or a specific replacement. The service preserves retained pieces and checks current size/stock/budget. Discussion questions can receive answers without another set of cards. A rounded composer includes a **Shop new pieces / With my wardrobe** menu, with a moving pink/lilac background and reduced-motion support. The logged-in welcome screen focuses on starting a conversation instead of an editorial advertisement.
+
+The backend's [conversation and retrieval documentation](https://github.com/samwin-steve/Flairify-Backend/blob/main/docs/SEMANTIC_RAG.md) and [collected real-service results](https://github.com/samwin-steve/Flairify-Backend/blob/main/docs/live-dialogue-results.json) distinguish working Google integrations from deterministic demo behavior. No new image/video generation is part of this release.

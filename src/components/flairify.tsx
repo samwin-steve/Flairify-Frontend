@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { StylistComposer } from "./stylist-composer";
 import { streamChat } from "@/lib/chat-stream";
 import {
   QueryClient,
@@ -102,19 +103,19 @@ const navigation = [
 const prompts = [
   {
     icon: Compass,
-    title: "A trip, thoughtfully packed",
+    title: "Pack for a work trip",
     text: "Three days in Mumbai for work. I’ll be walking a lot. My budget is ₹5,000, and I want pieces I’ll wear again.",
     label: "Help me pack for Mumbai",
   },
   {
     icon: Shirt,
-    title: "More from what you own",
+    title: "Find a versatile jacket",
     text: "Which jacket under ₹3,000 works with the most distinct outfits in my wardrobe?",
     label: "Find my most versatile jacket",
   },
   {
     icon: Heart,
-    title: "A little everyday inspiration",
+    title: "An everyday look",
     text: "Help me make a relaxed everyday outfit with pieces I already own, within ₹3,000.",
     label: "Make everyday feel like me",
   },
@@ -169,6 +170,10 @@ function Application() {
     id?: string;
     previewJobId?: string;
   } | null>(null);
+  const [refinementLook, setRefinementLook] = useState<Outfit | null>(null);
+  const historyRestored = useRef(false);
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const [activeHistoryReady, setActiveHistoryReady] = useState(false);
   const [activeLook, setActiveLook] = useState<Outfit | null>(null);
   const [includeWardrobe, setIncludeWardrobe] = useState(false);
   const [toast, setToast] = useState("");
@@ -246,6 +251,27 @@ function Application() {
     queryFn: () => api<{ conversations: Conversation[] }>("/conversations"),
     enabled: session,
   });
+  useEffect(() => {
+    if (!session) {
+      historyRestored.current = false;
+      setActiveHistoryReady(false);
+      return;
+    }
+    if (!conversations.data || historyRestored.current) return;
+    historyRestored.current = true;
+    const savedId = localStorage.getItem("flairify-conversation");
+    const candidate =
+      savedId === ""
+        ? null
+        : conversations.data.conversations.find((c) => c.id === savedId) ||
+          conversations.data.conversations[0];
+    if (candidate) {
+      setConvoId(candidate.id);
+      setMessages(candidate.messages);
+      localStorage.setItem("flairify-conversation", candidate.id);
+    }
+    setActiveHistoryReady(true);
+  }, [session, conversations.data]);
   const stores = useQuery({
     queryKey: ["stores"],
     queryFn: () => api<{ stores: Shop[] }>("/stores"),
@@ -271,7 +297,8 @@ function Application() {
     !!profile.data?.clothing_size &&
     !!profile.data?.shoe_size;
   const latestOutfits =
-    messages.filter((m) => m.role === "assistant").at(-1)?.outfits || [];
+    messages.filter((m) => m.role === "assistant" && m.outfits?.length).at(-1)
+      ?.outfits || [];
   const summaryLook = activeLook || latestOutfits[0];
   function changePage(id: string) {
     setPage(id);
@@ -321,6 +348,13 @@ function Application() {
         await createUserWithEmailAndPassword(getAuth(), email, password);
       else await signInWithEmailAndPassword(getAuth(), email, password);
       localStorage.removeItem("flairify-token");
+      historyRestored.current = false;
+      setActiveHistoryReady(false);
+      setMessages([]);
+      setConvoId(null);
+      setRefinementLook(null);
+      setActiveLook(null);
+      qc.clear();
       setSession(true);
       setAuthOpen(false);
       qc.invalidateQueries();
@@ -346,11 +380,14 @@ function Application() {
     setOnboarding(false);
     setMessages([]);
     setConvoId(null);
+    setRefinementLook(null);
+    localStorage.removeItem("flairify-conversation");
     qc.clear();
     setPage("stylist");
   }
   async function send(text = input) {
-    if (!text.trim() || busy || chatController.current) return;
+    if (!text.trim() || busy || chatController.current || !activeHistoryReady)
+      return;
     if (!ready) {
       setOnboarding(true);
       return;
@@ -366,12 +403,16 @@ function Application() {
       created_at: new Date().toISOString(),
     };
     setMessages((old) => [...old, draft]);
+    requestAnimationFrame(() =>
+      bottom.current?.scrollIntoView({ behavior: "auto", block: "end" }),
+    );
     const controller = new AbortController();
     chatController.current = controller;
     setStreamStatus("Checking your saved shopping preferences…");
     const payload = {
       message: text,
       conversation_id: convoId,
+      reference_outfit_id: refinementLook?.id || null,
       store_id: storeId || null,
       include_wardrobe: includeWardrobe,
     };
@@ -413,8 +454,10 @@ function Application() {
       );
       if (chatController.current !== controller) return;
       setConvoId(result.conversation.id);
+      localStorage.setItem("flairify-conversation", result.conversation.id);
+      setRefinementLook(null);
       setMessages(result.conversation.messages);
-      setActiveLook(result.outfits[0] || null);
+      if (result.outfits.length) setActiveLook(result.outfits[0]);
       chatRetry.current = null;
       qc.invalidateQueries({ queryKey: ["conversations"] });
     } catch (e) {
@@ -430,14 +473,13 @@ function Application() {
         setBusy(false);
         setStreamStatus("");
         setStreamingMessageId(null);
-        setTimeout(
-          () =>
-            bottom.current?.scrollIntoView({
-              behavior: "smooth",
-              block: "end",
-            }),
-          80,
-        );
+        // Keep the answer visible; scrolling to the last card hides the new reply.
+        setTimeout(() => {
+          const replies = document.querySelectorAll(".message.assistant");
+          replies
+            .item(replies.length - 1)
+            ?.scrollIntoView({ behavior: "auto", block: "start" });
+        }, 80);
       }
     }
   }
@@ -819,11 +861,13 @@ function Application() {
       </div>
       <div className="history">
         <div className="section-line">
-          <span>OUR CONVERSATIONS</span>
+          <span>YOUR CHATS</span>
           <button
             className="icon-button small"
             onClick={() => {
               setConvoId(null);
+              localStorage.setItem("flairify-conversation", "");
+              setRefinementLook(null);
               setMessages([]);
               setActiveLook(null);
               changePage("stylist");
@@ -834,24 +878,36 @@ function Application() {
             <Plus size={16} />
           </button>
         </div>
-        {conversations.data?.conversations.slice(0, 5).map((c) => (
+        {conversations.data?.conversations
+          .slice(0, showAllHistory ? undefined : 5)
+          .map((c) => (
+            <button
+              className={convoId === c.id ? "selected" : ""}
+              key={c.id}
+              disabled={busy}
+              onClick={() => {
+                setConvoId(c.id);
+                localStorage.setItem("flairify-conversation", c.id);
+                setRefinementLook(null);
+                setMessages(c.messages);
+                setActiveLook(null);
+                changePage("stylist");
+              }}
+            >
+              <MessageCircle size={15} />
+              <span>{c.title}</span>
+            </button>
+          ))}
+        {(conversations.data?.conversations.length || 0) > 5 && (
           <button
-            className={convoId === c.id ? "selected" : ""}
-            key={c.id}
-            disabled={busy}
-            onClick={() => {
-              setConvoId(c.id);
-              setMessages(c.messages);
-              setActiveLook(null);
-              changePage("stylist");
-            }}
+            className="text-link"
+            onClick={() => setShowAllHistory(!showAllHistory)}
           >
-            <MessageCircle size={15} />
-            <span>{c.title}</span>
+            {showAllHistory ? "Show less" : "All conversations"}
           </button>
-        ))}
+        )}
         {!conversations.data?.conversations.length && (
-          <p>Your next good idea starts here.</p>
+          <p>Your conversations appear here.</p>
         )}
       </div>
       <div className="sidebar-bottom">
@@ -1037,28 +1093,47 @@ function Application() {
         )}
         {page === "stylist" && (
           <div className="stylist-layout">
-            <main className="conversation">
+            <main
+              className={
+                "conversation refined-chat" +
+                (busy ? " is-answering" : "") +
+                (!messages.length ? " is-empty" : "")
+              }
+            >
+              <div className="stylist-aura" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </div>
               <div className="conversation-scroll">
+                {conversations.isError && (
+                  <div className="notice error" role="alert">
+                    Your conversations couldn’t be loaded.{" "}
+                    <button
+                      className="text-link"
+                      onClick={() => conversations.refetch()}
+                    >
+                      Try again
+                    </button>
+                  </div>
+                )}
                 {!messages.length ? (
                   <>
                     <div className="stylist-intro">
-                      <div className="eyebrow">
-                        <span className="tiny-star">✧</span> YOUR WARDROBE. A
-                        WORLD OF POSSIBILITIES.
-                      </div>
+                      <span className="stylist-mark" aria-hidden="true">
+                        <Sparkles size={26} />
+                      </span>
                       <h1>
                         Hi{" "}
                         {profile.data?.name && profile.data.name !== "Friend"
-                          ? profile.data.name
+                          ? profile.data.name.split(" ")[0]
                           : "there"}
-                        ,<br />
-                        what’s on your <em>agenda?</em>
+                        .<br />
+                        What feels like <em>you</em> today?
                       </h1>
                       <p>
-                        A busy week, a little getaway, or just feeling like
-                        yourself.
-                        <br className="desktop-break" /> Let’s find a look for
-                        wherever life takes you.
+                        Tell me your plans. We’ll find your look, then make it
+                        yours.
                       </p>
                     </div>
                     {!ready && (
@@ -1082,6 +1157,8 @@ function Application() {
                       {prompts.map((p) => (
                         <button
                           className="agenda-card"
+                          aria-label={p.label}
+                          disabled={busy || !activeHistoryReady}
                           key={p.title}
                           onClick={() =>
                             ready ? send(p.text) : setOnboarding(true)
@@ -1094,35 +1171,6 @@ function Application() {
                         </button>
                       ))}
                     </div>
-                    <div className="editorial-card">
-                      <img
-                        src="/images/hero.jpg"
-                        alt="Editorial outfit inspiration in a light blazer"
-                      />
-                      <div>
-                        <span className="eyebrow">
-                          STYLE ISN’T ALWAYS SOMETHING NEW
-                        </span>
-                        <h2>
-                          New plans.
-                          <br />
-                          Old favourites.
-                          <br />
-                          <em>A little flair.</em>
-                        </h2>
-                        <p>
-                          Your next great outfit might already
-                          <br />
-                          be halfway there.
-                        </p>
-                        <button onClick={() => changePage("wardrobe")}>
-                          Rediscover your wardrobe <ArrowRight size={17} />
-                        </button>
-                      </div>
-                      <span className="editorial-source">
-                        Editorial photo · Unsplash
-                      </span>
-                    </div>
                   </>
                 ) : (
                   <div className="messages">
@@ -1134,11 +1182,11 @@ function Application() {
                         <div className="message-body">
                           {m.role === "assistant" && (
                             <span className="assistant-label">
-                              YOUR FLAIRIFY STYLIST{" "}
+                              Flairify{" "}
                               <small>
                                 {config.data?.chat === "rules"
                                   ? "Rule-based demo"
-                                  : "Grounded assistance"}
+                                  : "Your stylist"}
                               </small>
                             </span>
                           )}
@@ -1162,33 +1210,39 @@ function Application() {
                                 )
                               : m.content}
                           </p>
-                          {m.outfits?.map((o, i) => (
-                            <LookCard
-                              key={o.id}
-                              outfit={o}
-                              index={i}
-                              isSaved={
-                                !!saved.data?.looks.some((s) => s.id === o.id)
-                              }
-                              onSave={() => saveLook(o)}
-                              onTryOn={(selected) =>
-                                requestTryOn(selected, o.id)
-                              }
-                              keepBackground={!!profile.data?.keep_background}
-                              onSetup={() => changePage("profile")}
-                              onReference={manageReferences}
-                              onSignIn={
-                                profile.data?.demo
-                                  ? signInForPreview
-                                  : undefined
-                              }
-                              onBuy={() => setCheckout(o)}
-                              onSelect={() => {
-                                setActiveLook(o);
-                                setDetails(true);
-                              }}
-                            />
-                          ))}
+                          {(m.id === streamingMessageId ? [] : m.outfits)?.map(
+                            (o, i) => (
+                              <LookCard
+                                key={o.id}
+                                outfit={o}
+                                index={i}
+                                isSaved={
+                                  !!saved.data?.looks.some((s) => s.id === o.id)
+                                }
+                                onSave={() => saveLook(o)}
+                                onTryOn={(selected) =>
+                                  requestTryOn(selected, o.id)
+                                }
+                                keepBackground={!!profile.data?.keep_background}
+                                onSetup={() => changePage("profile")}
+                                onReference={manageReferences}
+                                onSignIn={
+                                  profile.data?.demo
+                                    ? signInForPreview
+                                    : undefined
+                                }
+                                onBuy={() => setCheckout(o)}
+                                onRefine={() => {
+                                  setRefinementLook(o);
+                                  setInput("");
+                                }}
+                                onSelect={() => {
+                                  setActiveLook(o);
+                                  setDetails(true);
+                                }}
+                              />
+                            ),
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1212,10 +1266,10 @@ function Application() {
                 {messages.length > 0 && !busy && (
                   <div className="followup-chips">
                     {[
+                      "Why does this work?",
+                      "A different variation",
                       "Something cheaper",
                       "More relaxed",
-                      ...(includeWardrobe ? ["Keep my shirt"] : []),
-                      "Show different options",
                     ].map((t) => (
                       <button key={t} onClick={() => send(t)}>
                         {t}
@@ -1223,77 +1277,21 @@ function Application() {
                     ))}
                   </div>
                 )}
-                {ready && (
-                  <div className="stylist-preferences">
-                    <label className="check-line">
-                      <input
-                        type="checkbox"
-                        role="switch"
-                        checked={includeWardrobe}
-                        disabled={busy}
-                        onChange={(e) => setIncludeWardrobe(e.target.checked)}
-                      />
-                      Pair with my wardrobe
-                    </label>
-                    <span className="fine-print">
-                      {includeWardrobe
-                        ? "Only matching, confirmed pieces"
-                        : "Catalogue pieces only"}
-                    </span>
-                    <button
-                      className="text-link"
-                      onClick={() => changePage("profile")}
-                    >
-                      Shopping preferences
-                    </button>
-                  </div>
-                )}
-                <form
-                  className="composer"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    send();
-                  }}
-                >
-                  <button
-                    className="icon-button"
-                    type="button"
-                    aria-label="Add wardrobe photos"
-                    onClick={() =>
-                      ready ? setAddPhotos(true) : setOnboarding(true)
-                    }
-                  >
-                    <Plus size={23} />
-                  </button>
-                  <textarea
-                    aria-label="Message your stylist"
-                    placeholder={
-                      ready
-                        ? "Tell me what you’re dressing for…"
-                        : "Save your shopping preferences to start…"
-                    }
-                    value={input}
-                    rows={1}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        send();
-                      }
-                    }}
-                  />
-                  <button
-                    className="send-button"
-                    aria-label="Send message"
-                    disabled={busy || !input.trim()}
-                  >
-                    {busy ? (
-                      <LoaderCircle className="spin" size={19} />
-                    ) : (
-                      <ArrowRight size={21} />
-                    )}
-                  </button>
-                </form>
+                <StylistComposer
+                  input={input}
+                  onInput={setInput}
+                  onSend={() => send()}
+                  busy={busy || !activeHistoryReady}
+                  ready={ready}
+                  includeWardrobe={includeWardrobe}
+                  onWardrobe={setIncludeWardrobe}
+                  onPhotos={() =>
+                    ready ? setAddPhotos(true) : setOnboarding(true)
+                  }
+                  onSettings={() => changePage("profile")}
+                  focus={refinementLook}
+                  onClearFocus={() => setRefinementLook(null)}
+                />
                 <div className="composer-note">
                   <ShieldCheck size={12} />
                   <span>Your wardrobe stays yours.</span>
@@ -1661,6 +1659,7 @@ function LookCard({
   onTryOn,
   onBuy,
   onSelect,
+  onRefine,
   keepBackground,
   onSetup,
   onReference,
@@ -1673,6 +1672,7 @@ function LookCard({
   onTryOn: (selected: PreviewSelection[]) => Promise<void>;
   onBuy: () => void;
   onSelect: () => void;
+  onRefine?: () => void;
   keepBackground: boolean;
   onSetup: () => void;
   onReference: () => void;
@@ -1846,6 +1846,16 @@ function LookCard({
           Focused selection for your request. You don’t need to buy a whole
           outfit.
         </p>
+      )}
+      {onRefine && (
+        <button className="refine-look" onClick={onRefine}>
+          <Sparkles size={15} />
+          Refine this look
+          <span>
+            Change a colour, swap a piece, make it yours{" "}
+            <ArrowRight size={14} />
+          </span>
+        </button>
       )}
       <div className="look-footer">
         <div>

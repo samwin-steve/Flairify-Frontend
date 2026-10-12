@@ -23,8 +23,8 @@ test("saved shopping preferences, optional wardrobe, relevant distinct occasion 
     .click();
   await expect(page.locator(".app-shell")).toBeVisible();
   await expect(
-    page.getByRole("switch", { name: "Pair with my wardrobe" }),
-  ).not.toBeChecked();
+    page.getByRole("button", { name: "Shopping mode: Shop new pieces" }),
+  ).toBeVisible();
   await expect(page.locator(".conversation select")).toHaveCount(0);
   let sent: any;
   page.on("request", (request) => {
@@ -79,15 +79,22 @@ test("saved shopping preferences, optional wardrobe, relevant distinct occasion 
   await page.getByRole("button", { name: "Save and continue" }).click();
   await page.reload();
   await expect(
-    page.getByRole("switch", { name: "Pair with my wardrobe" }),
-  ).toBeChecked();
-  await page.getByRole("switch", { name: "Pair with my wardrobe" }).uncheck();
+    page.getByRole("button", { name: "Shopping mode: With my wardrobe" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Shopping mode: With my wardrobe" })
+    .click();
+  await page
+    .getByRole("button", { name: "New pieces Explore the catalogue" })
+    .click();
   await page
     .getByRole("textbox", { name: "Message your stylist" })
     .fill("Office shirts");
   await page.getByRole("button", { name: "Send message" }).click();
-  await expect(page.locator(".look-card").first()).toBeVisible();
-  await page
+  await expect(page.locator(".message.assistant")).toHaveCount(2);
+  const latest = page.locator(".message.assistant").last();
+  await expect(latest.locator(".look-card").first()).toBeVisible();
+  await latest
     .getByRole("button", { name: "Buy", exact: true })
     .first()
     .click();
