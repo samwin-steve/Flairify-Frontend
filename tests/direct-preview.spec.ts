@@ -30,6 +30,10 @@ test("direct multi-piece preview, conflict resolution, refresh and editable back
       headers,
       data: { ...item, confirmed: true },
     });
+  await request.put("/api/profile", {
+    headers,
+    data: { clothing_size: "M", shoe_size: "39" },
+  });
   await request.post("/api/onboarding/complete", { headers });
   const products = (
     await (await request.get("/api/catalog", { headers })).json()

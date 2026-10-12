@@ -151,6 +151,8 @@ test("direct photo upload, ownership review, persistence and 3D fallback", async
   await page.goto("/");
   await page.getByRole("button", { name: "Explore sample demo" }).click();
   await page.getByLabel("What should we call you?").fill("Photo QA");
+  await page.getByLabel("Clothing size", { exact: true }).selectOption("M");
+  await page.getByLabel("Shoe size (EU)").selectOption("39");
   await page.getByRole("button", { name: "Save and continue" }).click();
   await page
     .getByRole("button", { name: "Add reference photos later" })
@@ -234,6 +236,8 @@ test("inventory lists available products and requests sign-in for real previews"
   await page.goto("/");
   await page.getByRole("button", { name: "Explore sample demo" }).click();
   await page.getByLabel("What should we call you?").fill("Inventory QA");
+  await page.getByLabel("Clothing size", { exact: true }).selectOption("M");
+  await page.getByLabel("Shoe size (EU)").selectOption("39");
   await page.getByRole("button", { name: "Save and continue" }).click();
   await page
     .getByRole("button", { name: "Add reference photos later" })

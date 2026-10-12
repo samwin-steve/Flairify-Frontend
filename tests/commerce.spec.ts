@@ -173,7 +173,7 @@ test("expanded catalogue filters departments, shows more, and has valid photos",
 }) => {
   await start(page);
   await expect(page.locator(".inventory-card")).toHaveCount(24);
-  await expect(page.getByRole("status")).toContainText("199 pieces");
+  await expect(page.getByRole("status")).toContainText("189 pieces");
   await page.getByRole("button", { name: "Show more clothes" }).click();
   await expect(page.locator(".inventory-card")).toHaveCount(48);
   await page
@@ -183,7 +183,7 @@ test("expanded catalogue filters departments, shows more, and has valid photos",
   await page
     .getByRole("combobox", { name: "Category", exact: true })
     .selectOption("top");
-  await expect(page.getByRole("status")).toContainText("25 pieces");
+  await expect(page.getByRole("status")).toContainText("23 pieces");
   await expect(page.locator(".inventory-card").first()).toContainText("4XL");
   const labels = await page
     .locator(".inventory-card .eyebrow")

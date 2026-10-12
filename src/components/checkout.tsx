@@ -3,9 +3,11 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ShoppingBag, PackageCheck } from "lucide-react";
 import { api, post } from "@/lib/api";
+import { checkoutDefault } from "@/lib/checkout-defaults";
 import { money } from "@/lib/utils";
 import type {
   Product,
+  Profile,
   Shop,
   MockOrder,
   OrderQuote,
@@ -38,6 +40,10 @@ export function Checkout({
     queryFn: () => api<{ products: Product[] }>("/catalog"),
     staleTime: 0,
   });
+  const profile = useQuery({
+    queryKey: ["profile"],
+    queryFn: () => api<Profile>("/profile"),
+  });
   const stores = useQuery({
     queryKey: ["stores"],
     queryFn: () => api<{ stores: Shop[] }>("/stores"),
@@ -55,24 +61,9 @@ export function Checkout({
       current.map((p) => {
         if (choices[p.id]) return choices[p.id];
         const previous = products.find((v) => v.id === p.id)?.availability;
-        const variant =
-          p.variants.find(
-            (v) =>
-              v.id === previous?.variant_id &&
-              v.stock.some((s) => s.quantity > 0),
-          ) || p.variants.find((v) => v.stock.some((s) => s.quantity > 0));
-        const stock =
-          variant?.stock.find(
-            (s) => s.store_id === previous?.store_id && s.quantity > 0,
-          ) || variant?.stock.find((s) => s.quantity > 0);
-        return {
-          product_id: p.id,
-          variant_id: variant?.id || "",
-          store_id: stock?.store_id || "",
-          quantity: 1,
-        };
+        return checkoutDefault(p, profile.data, previous);
       }),
-    [current, choices, products],
+    [current, choices, products, profile.data],
   );
   const missing = products.some(
     (p) =>
@@ -82,6 +73,7 @@ export function Checkout({
   );
   const valid =
     !missing &&
+    !profile.isLoading &&
     items.length > 0 &&
     items.every((i) => i.variant_id && i.store_id);
   const body = {
@@ -131,7 +123,7 @@ export function Checkout({
       open
       onOpenChange={(v) => !v && !busy && onClose()}
       title="Your mock checkout"
-      description="Review your new pieces. No payment or delivery will take place."
+      description="Confirm your sizes, colours and store before placing the mock order. No payment or delivery will take place."
       wide
     >
       <div className="notice">

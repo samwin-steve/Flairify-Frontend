@@ -48,7 +48,7 @@ import {
   X,
 } from "lucide-react";
 import { api, post, del } from "@/lib/api";
-import { money, CLOTHING_SIZES, SHOE_SIZES } from "@/lib/utils";
+import { money } from "@/lib/utils";
 import type {
   Config,
   Conversation,
@@ -169,9 +169,7 @@ function Application() {
     id?: string;
   } | null>(null);
   const [activeLook, setActiveLook] = useState<Outfit | null>(null);
-  const [clothingSize, setClothingSize] = useState("");
-  const [shoeSize, setShoeSize] = useState("");
-  const [department, setDepartment] = useState("all");
+  const [includeWardrobe, setIncludeWardrobe] = useState(false);
   const [toast, setToast] = useState("");
   const [addPhotos, setAddPhotos] = useState(false);
   const [filter, setFilter] = useState("all");
@@ -184,15 +182,6 @@ function Application() {
   useEffect(() => {
     const existing = localStorage.getItem("flairify-token");
     setSession(!!existing);
-    setDepartment(sessionStorage.getItem("flairify-department") || "all");
-    const sizes = sessionStorage.getItem("flairify-sizes");
-    if (sizes) {
-      try {
-        const s = JSON.parse(sizes);
-        setClothingSize(s.clothing_size || "");
-        setShoeSize(s.shoe_size || "");
-      } catch {}
-    }
     const url = new URL(window.location.href);
     setStoreId(url.searchParams.get("store") || "");
     let unsubscribe = () => {};
@@ -267,29 +256,19 @@ function Application() {
     enabled: session,
   });
   useEffect(() => {
-    if (profile.data) {
-      if (profile.data.clothing_size)
-        setClothingSize(profile.data.clothing_size);
-      if (profile.data.shoe_size) setShoeSize(profile.data.shoe_size);
-    }
-  }, [profile.data]);
+    setIncludeWardrobe(profile.data?.include_wardrobe ?? false);
+  }, [profile.data?.include_wardrobe]);
   useEffect(() => {
     if (toast) {
       const t = setTimeout(() => setToast(""), 4000);
       return () => clearTimeout(t);
     }
   }, [toast]);
-  useEffect(() => {
-    if (!onboarding) {
-      try {
-        const s = JSON.parse(sessionStorage.getItem("flairify-sizes") || "{}");
-        if (s.clothing_size) setClothingSize(s.clothing_size);
-        if (s.shoe_size) setShoeSize(s.shoe_size);
-      } catch {}
-    }
-  }, [onboarding]);
   const confirmed = wardrobe.data?.items.filter((w) => w.confirmed) || [];
-  const ready = !!profile.data?.onboarding_complete && confirmed.length > 0;
+  const ready =
+    !!profile.data?.onboarding_complete &&
+    !!profile.data?.clothing_size &&
+    !!profile.data?.shoe_size;
   const latestOutfits =
     messages.filter((m) => m.role === "assistant").at(-1)?.outfits || [];
   const summaryLook = activeLook || latestOutfits[0];
@@ -355,7 +334,7 @@ function Application() {
     localStorage.removeItem("flairify-token");
     sessionStorage.removeItem("flairify-sizes");
     sessionStorage.removeItem("flairify-department");
-    setDepartment("all");
+    setIncludeWardrobe(false);
     chatController.current?.abort();
     chatController.current = null;
     chatRetry.current = null;
@@ -388,14 +367,12 @@ function Application() {
     setMessages((old) => [...old, draft]);
     const controller = new AbortController();
     chatController.current = controller;
-    setStreamStatus("Checking your wardrobe and preferences…");
+    setStreamStatus("Checking your saved shopping preferences…");
     const payload = {
       message: text,
       conversation_id: convoId,
       store_id: storeId || null,
-      clothing_size: clothingSize || null,
-      shoe_size: shoeSize || null,
-      department,
+      include_wardrobe: includeWardrobe,
     };
     const signature = JSON.stringify(payload);
     if (chatRetry.current?.signature !== signature)
@@ -560,7 +537,11 @@ function Application() {
         onComplete={() => {
           setOnboarding(false);
           refresh();
-          setToast("Your wardrobe is ready.");
+          setToast(
+            confirmed.length
+              ? "Your wardrobe is ready."
+              : "Your shopping preferences are ready.",
+          );
         }}
       />
     );
@@ -959,18 +940,14 @@ function Application() {
         <MapPin size={18} />
         <div>
           <strong>Your store, your choice</strong>
-          <select
-            aria-label="Select store"
-            value={storeId}
-            onChange={(e) => setStoreId(e.target.value)}
-          >
-            <option value="">All available stores</option>
-            {stores.data?.stores.map((s) => (
-              <option value={s.id} key={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+          <p>
+            {stores.data?.stores.find(
+              (s) => s.id === (storeId || profile.data?.preferred_store_id),
+            )?.name || "All available stores"}
+          </p>
+          <button className="text-link" onClick={() => changePage("profile")}>
+            Change in Profile
+          </button>
           <button className="text-link" onClick={nearby}>
             Find stores near me
           </button>
@@ -1089,9 +1066,10 @@ function Application() {
                           <Shirt size={23} />
                         </span>
                         <div>
-                          <strong>Good style starts with what you own.</strong>
+                          <strong>Let’s save your shopping preferences.</strong>
                           <p>
-                            Share a few photos and confirm your wardrobe first.
+                            Set your department and sizes once. Wardrobe pairing
+                            is optional.
                           </p>
                         </div>
                         <Button size="sm" onClick={() => setOnboarding(true)}>
@@ -1222,7 +1200,7 @@ function Application() {
                         <span className="stylist-avatar">✧</span>
                         <LoaderCircle size={16} className="spin" />
                         {streamStatus ||
-                          "Checking your wardrobe and available sizes…"}
+                          "Finding suitable options for your occasion…"}
                       </div>
                     )}
                     <div ref={bottom} />
@@ -1235,8 +1213,8 @@ function Application() {
                     {[
                       "Something cheaper",
                       "More relaxed",
-                      "Keep my shirt",
-                      "Show another jacket",
+                      ...(includeWardrobe ? ["Keep my shirt"] : []),
+                      "Show different options",
                     ].map((t) => (
                       <button key={t} onClick={() => send(t)}>
                         {t}
@@ -1245,67 +1223,28 @@ function Application() {
                   </div>
                 )}
                 {ready && (
-                  <div className="size-followup">
-                    <label>
-                      Shop
-                      <select
-                        value={department}
-                        onChange={(e) => {
-                          setDepartment(e.target.value);
-                          sessionStorage.setItem(
-                            "flairify-department",
-                            e.target.value,
-                          );
-                        }}
-                      >
-                        <option value="all">All departments</option>
-                        <option value="women">Women + unisex</option>
-                        <option value="men">Men + unisex</option>
-                        <option value="unisex">Unisex</option>
-                      </select>
+                  <div className="stylist-preferences">
+                    <label className="check-line">
+                      <input
+                        type="checkbox"
+                        role="switch"
+                        checked={includeWardrobe}
+                        disabled={busy}
+                        onChange={(e) => setIncludeWardrobe(e.target.checked)}
+                      />
+                      Pair with my wardrobe
                     </label>
-                    <label>
-                      Clothing
-                      <select
-                        value={clothingSize}
-                        onChange={(e) => {
-                          setClothingSize(e.target.value);
-                          sessionStorage.setItem(
-                            "flairify-sizes",
-                            JSON.stringify({
-                              clothing_size: e.target.value,
-                              shoe_size: shoeSize,
-                            }),
-                          );
-                        }}
-                      >
-                        <option value="">Select</option>
-                        {CLOTHING_SIZES.map((s) => (
-                          <option key={s}>{s}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Shoes (EU)
-                      <select
-                        value={shoeSize}
-                        onChange={(e) => {
-                          setShoeSize(e.target.value);
-                          sessionStorage.setItem(
-                            "flairify-sizes",
-                            JSON.stringify({
-                              clothing_size: clothingSize,
-                              shoe_size: e.target.value,
-                            }),
-                          );
-                        }}
-                      >
-                        <option value="">Select</option>
-                        {SHOE_SIZES.map((s) => (
-                          <option key={s}>{s}</option>
-                        ))}
-                      </select>
-                    </label>
+                    <span className="fine-print">
+                      {includeWardrobe
+                        ? "Only matching, confirmed pieces"
+                        : "Catalogue pieces only"}
+                    </span>
+                    <button
+                      className="text-link"
+                      onClick={() => changePage("profile")}
+                    >
+                      Shopping preferences
+                    </button>
                   </div>
                 )}
                 <form
@@ -1330,7 +1269,7 @@ function Application() {
                     placeholder={
                       ready
                         ? "Tell me what you’re dressing for…"
-                        : "Start with your wardrobe, then let’s talk style…"
+                        : "Save your shopping preferences to start…"
                     }
                     value={input}
                     rows={1}
@@ -1899,7 +1838,7 @@ function LookCard({
         )}
       {!outfit.complete && (
         <p className="small-note">
-          Partial combination: add missing base pieces or shoes to complete this
+          Focused selection for your request. You don’t need to buy a whole
           outfit.
         </p>
       )}

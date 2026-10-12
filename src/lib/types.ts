@@ -141,6 +141,9 @@ export interface Job {
   updated_at: string;
 }
 export interface Profile {
+  department?: "all" | "women" | "men" | "unisex";
+  preferred_store_id?: string | null;
+  include_wardrobe?: boolean;
   name: string;
   styles: string[];
   colours: string[];

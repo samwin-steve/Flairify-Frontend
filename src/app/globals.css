@@ -1250,6 +1250,7 @@ svg {
   color: var(--muted);
 }
 .store-note .text-link {
+  display: block;
   font-size: 9px;
 }
 .gentle-note {
@@ -3596,3 +3597,8 @@ svg {
 @media (prefers-reduced-motion: reduce) {
   .stream-word, .streaming-copy::after { animation: none; }
 }
+
+.stylist-preferences { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; padding: 10px 4px; }
+.stylist-preferences .check-line { margin: 0; min-height: 44px; }
+.stylist-preferences .text-link { margin-left: auto; min-height: 44px; }
+@media (max-width: 600px) { .stylist-preferences { gap: 4px 10px; } .stylist-preferences .fine-print { flex-basis: 100%; order: 3; } }

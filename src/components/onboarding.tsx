@@ -26,6 +26,7 @@ import type {
   Photo,
   Profile,
   Reference,
+  Shop,
   WardrobeItem,
 } from "@/lib/types";
 import { Button } from "./ui/button";
@@ -34,13 +35,16 @@ import { Media } from "./media";
 
 const profileSchema = z.object({
   name: z.string().min(1).max(80),
-  clothing_size: z.string(),
-  shoe_size: z.string(),
+  clothing_size: z.string().min(1, "Choose your clothing size"),
+  shoe_size: z.string().min(1, "Choose your shoe size"),
   fit: z.string(),
   budget: z.coerce.number().min(0).max(1000000),
   remember: z.boolean(),
   processing: z.boolean(),
   keep_background: z.boolean(),
+  department: z.enum(["all", "women", "men", "unisex"]),
+  preferred_store_id: z.string(),
+  include_wardrobe: z.boolean(),
 });
 type Basics = z.infer<typeof profileSchema>;
 export function ProfileForm({
@@ -53,6 +57,10 @@ export function ProfileForm({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [styles, setStyles] = useState(profile.styles);
+  const stores = useQuery({
+    queryKey: ["stores"],
+    queryFn: () => api<{ stores: Shop[] }>("/stores"),
+  });
   const form = useForm<Basics>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -64,23 +72,21 @@ export function ProfileForm({
       remember: profile.consent.remember_preferences,
       processing: profile.consent.ai_photo_processing,
       keep_background: profile.keep_background ?? false,
+      department: profile.department || "all",
+      preferred_store_id: profile.preferred_store_id || "",
+      include_wardrobe: profile.include_wardrobe ?? false,
     },
   });
   async function submit(data: Basics) {
     setBusy(true);
     setError("");
     try {
-      sessionStorage.setItem(
-        "flairify-sizes",
-        JSON.stringify({
-          clothing_size: data.clothing_size,
-          shoe_size: data.shoe_size,
-          budget: data.budget,
-        }),
-      );
       await put("/profile", {
         name: data.name,
         keep_background: data.keep_background,
+        department: data.department,
+        preferred_store_id: data.preferred_store_id || null,
+        include_wardrobe: data.include_wardrobe,
         styles,
         colours: [],
         clothing_size: data.clothing_size,
@@ -93,6 +99,7 @@ export function ProfileForm({
         },
         onboarding_complete: profile.onboarding_complete,
       });
+      await post("/onboarding/complete");
       onSaved();
     } catch (e) {
       setError((e as Error).message);
@@ -140,9 +147,29 @@ export function ProfileForm({
       </div>
       <div className="form-grid">
         <div className="field">
+          <label htmlFor="department">Shopping department</label>
+          <select id="department" {...form.register("department")}>
+            <option value="all">All departments</option>
+            <option value="women">Women + unisex</option>
+            <option value="men">Men + unisex</option>
+            <option value="unisex">Unisex</option>
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="preferred-store">Preferred store</label>
+          <select id="preferred-store" {...form.register("preferred_store_id")}>
+            <option value="">All available stores</option>
+            {stores.data?.stores.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
           <label htmlFor="size">Clothing size</label>
-          <select id="size" {...form.register("clothing_size")}>
-            <option value="">Skip for now</option>
+          <select id="size" required {...form.register("clothing_size")}>
+            <option value="">Choose your size</option>
             {CLOTHING_SIZES.map((s) => (
               <option key={s}>{s}</option>
             ))}
@@ -150,8 +177,8 @@ export function ProfileForm({
         </div>
         <div className="field">
           <label htmlFor="shoes">Shoe size (EU)</label>
-          <select id="shoes" {...form.register("shoe_size")}>
-            <option value="">Skip for now</option>
+          <select id="shoes" required {...form.register("shoe_size")}>
+            <option value="">Choose your size</option>
             {SHOE_SIZES.map((s) => (
               <option key={s}>{s}</option>
             ))}
@@ -175,6 +202,14 @@ export function ProfileForm({
           />
         </div>
       </div>
+      <label className="check-line">
+        <input type="checkbox" {...form.register("include_wardrobe")} />
+        Pair recommendations with my wardrobe by default
+      </label>
+      <p className="fine-print">
+        Optional. We’ll only use confirmed pieces that suit the occasion. You
+        can switch pairing on or off in chat.
+      </p>
       <div className="background-preference">
         <label className="check-line">
           <input type="checkbox" {...form.register("keep_background")} />
@@ -188,7 +223,7 @@ export function ProfileForm({
       </div>
       <label className="check-line">
         <input type="checkbox" {...form.register("remember")} />
-        Remember my preferences for future visits
+        Remember my optional style and colour preferences
       </label>
       <label className="check-line">
         <input type="checkbox" {...form.register("processing")} />I agree to
@@ -198,8 +233,8 @@ export function ProfileForm({
       </label>
       <p className="fine-print">
         Sizes come from you. Photos do not give us accurate body measurements.
-        Without permission, style and size preferences stay in this browser
-        session.
+        Your department, sizes, store and budget are saved to your account.
+        Review them in Profile anytime and confirm the size again at checkout.
       </p>
       {error && (
         <p role="alert" className="error">
@@ -580,7 +615,8 @@ export function GarmentEditor({
     setError("");
     try {
       if (action === "create") await post(`/wardrobe/${item.id}/shop-image`);
-      if (action === "retry") await post(`/jobs/${item.shop_image_job_id}/retry`);
+      if (action === "retry")
+        await post(`/jobs/${item.shop_image_job_id}/retry`);
       if (action === "remove") await del(`/jobs/${item.shop_image_job_id}`);
       qc.invalidateQueries({ queryKey: ["jobs"] });
       onSaved();
@@ -610,32 +646,75 @@ export function GarmentEditor({
         <div className="garment-evidence">
           {item.generated_image && (
             <figure>
-              <Media src={item.generated_image} alt={`AI-generated shop-style ${item.name}`} className="editor-image" />
+              <Media
+                src={item.generated_image}
+                alt={`AI-generated shop-style ${item.name}`}
+                className="editor-image"
+              />
               <figcaption>AI-generated shop-style image</figcaption>
             </figure>
           )}
           <figure>
-            <Media src={item.image} alt={`Original crop of ${item.name}`} className="editor-image" />
-            <figcaption>{item.evidence === "original_crop" ? "Original photo crop · Evidence" : "Garment reference"}</figcaption>
+            <Media
+              src={item.image}
+              alt={`Original crop of ${item.name}`}
+              className="editor-image"
+            />
+            <figcaption>
+              {item.evidence === "original_crop"
+                ? "Original photo crop · Evidence"
+                : "Garment reference"}
+            </figcaption>
           </figure>
           {item.evidence === "original_crop" && (
             <div className="form-stack">
-              <p className="fine-print">Shop-style images are AI reconstructions. Compare colour and details with your original; hidden details may differ.</p>
+              <p className="fine-print">
+                Shop-style images are AI reconstructions. Compare colour and
+                details with your original; hidden details may differ.
+              </p>
               {["queued", "running"].includes(item.shop_image_status || "") && (
-                <p role="status" className="fine-print">Gemini is preparing your shop-style image. You can confirm this garment now.</p>
+                <p role="status" className="fine-print">
+                  Gemini is preparing your shop-style image. You can confirm
+                  this garment now.
+                </p>
               )}
               {item.shop_image_status === "failed" && (
                 <>
-                  <p role="status" className="fine-print">{item.shop_image_error || "The shop-style image could not be created. Your original crop is available."}</p>
-                  <Button size="sm" variant="outline" disabled={imageBusy} onClick={() => imageAction("retry")}>Retry shop-style image</Button>
+                  <p role="status" className="fine-print">
+                    {item.shop_image_error ||
+                      "The shop-style image could not be created. Your original crop is available."}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={imageBusy}
+                    onClick={() => imageAction("retry")}
+                  >
+                    Retry shop-style image
+                  </Button>
                 </>
               )}
               {!item.shop_image_job_id && !item.generated_image && (
-                <Button size="sm" variant="outline" disabled={imageBusy} onClick={() => imageAction("create")}>Create shop-style image</Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={imageBusy}
+                  onClick={() => imageAction("create")}
+                >
+                  Create shop-style image
+                </Button>
               )}
-              {item.shop_image_job_id && item.shop_image_status !== "cancelled" && (
-                <Button size="sm" variant="ghost" disabled={imageBusy} onClick={() => imageAction("remove")}>Keep original only</Button>
-              )}
+              {item.shop_image_job_id &&
+                item.shop_image_status !== "cancelled" && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={imageBusy}
+                    onClick={() => imageAction("remove")}
+                  >
+                    Keep original only
+                  </Button>
+                )}
             </div>
           )}
         </div>
@@ -792,7 +871,9 @@ export function WardrobeReview({
             >
               <Media src={item.generated_image || item.image} alt={item.name} />
               {item.sample && <span className="image-badge">Sample</span>}
-              {item.generated_image && <span className="image-badge">AI-generated</span>}
+              {item.generated_image && (
+                <span className="image-badge">AI-generated</span>
+              )}
             </button>
             <div className="garment-info">
               <button className="garment-name" onClick={() => setEditing(item)}>
@@ -801,8 +882,16 @@ export function WardrobeReview({
               <p>
                 {item.colour} · {item.category}
               </p>
-              {["queued", "running"].includes(item.shop_image_status || "") && <p className="fine-print" role="status">Creating shop-style image…</p>}
-              {item.shop_image_status === "failed" && <p className="fine-print">Original crop · Image generation needs attention</p>}
+              {["queued", "running"].includes(item.shop_image_status || "") && (
+                <p className="fine-print" role="status">
+                  Creating shop-style image…
+                </p>
+              )}
+              {item.shop_image_status === "failed" && (
+                <p className="fine-print">
+                  Original crop · Image generation needs attention
+                </p>
+              )}
               <div className="garment-actions">
                 <button
                   className={
@@ -980,7 +1069,7 @@ export function Onboarding({
         <p className="page-subtitle">
           {
             [
-              "The things you love. The way you like to feel. Optional questions can wait.",
+              "Save your shopping preferences once. Photos and wardrobe pairing are optional.",
               "Clear light, a simple background, and your whole outfit in the frame.",
               "Share a few outfit photos. We’ll help you find pieces that work with what you already wear.",
               "Keep what you own. Correct the details. You’re always the final say.",
@@ -1000,6 +1089,12 @@ export function Onboarding({
         )}
         {step === 1 && (
           <>
+            <div className="notice">
+              <p>
+                Your shopping preferences are saved. You can add photos later.
+              </p>
+              <Button onClick={finish}>Start shopping without photos</Button>
+            </div>
             {config.analysis === "gemini" &&
               !profile.consent.ai_photo_processing && (
                 <label className="check-line notice">
