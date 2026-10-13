@@ -4298,3 +4298,11 @@ svg {
     overflow-y: auto;
   }
 }
+
+.catalogue-metadata .metadata-tag {
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--border, #eed9e2);
+}
+.catalogue-metadata .metadata-tag p { margin: 0.3rem 0 0; }
+.catalogue-metadata .metadata-tag strong { text-transform: capitalize; }
+.catalogue-metadata { overflow-wrap: anywhere; }

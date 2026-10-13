@@ -16,12 +16,14 @@ import { Button } from "./ui/button";
 import { Modal } from "./ui/dialog";
 import { Media } from "./media";
 import { OrderList } from "./checkout";
+import { CatalogueMetadata } from "./catalogue-metadata";
 
 type SellerRequest = { id: string; email: string; status: string };
 type Catalog = {
   products: Product[];
   stores: Shop[];
   editable_store_ids: string[];
+  enrichment_states?: Record<string, string>;
 };
 const categories = [
   "top",
@@ -48,6 +50,7 @@ export function Admin({
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
   const [creating, setCreating] = useState(false);
+  const [inspecting, setInspecting] = useState<Product | null>(null);
   const [storeEditing, setStoreEditing] = useState<Shop | null>(null);
   const data = useQuery({
     queryKey: ["admin"],
@@ -93,6 +96,7 @@ export function Admin({
       "seller-access",
       "seller-requests",
       "profile",
+      "catalogue-metadata",
     ])
       qc.invalidateQueries({ queryKey: [k] });
   }
@@ -264,12 +268,12 @@ export function Admin({
           onClick={() =>
             action(
               () => post("/admin/reindex"),
-              "Indexing requested. Check activity below.",
+              "Product analysis and search refresh queued. Check activity below.",
             )
           }
         >
           <RefreshCw size={16} />
-          Reindex listings
+          Refresh search details
         </Button>
       </div>
       {!editableStores.length && (
@@ -317,6 +321,29 @@ export function Admin({
               >
                 Edit listing
               </Button>
+              <Button variant="ghost" onClick={() => setInspecting(p)}>
+                Styling details
+              </Button>
+              {data.data?.enrichment_states?.[p.id] === "complete" && (
+                <p className="small-note">Styling details ready</p>
+              )}
+              {data.data?.enrichment_states?.[p.id] === "needs_review" && (
+                <p className="small-note">Product photo needs review</p>
+              )}
+              {data.data?.enrichment_states?.[p.id] === "failed" && (
+                <Button
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() =>
+                    action(
+                      () => post(`/admin/products/${p.id}/reindex`),
+                      "Analysis queued again.",
+                    )
+                  }
+                >
+                  Retry product analysis
+                </Button>
+              )}
             </div>
           </article>
         ))}
@@ -370,7 +397,7 @@ export function Admin({
           />
         </label>
       </details>
-      <h2>Indexing activity</h2>
+      <h2>Catalogue activity</h2>
       {jobs.error && (
         <p role="alert" className="error">
           {jobs.error.message}
@@ -385,8 +412,23 @@ export function Admin({
             <span>{j.stage}</span>
             <span className="pill">{j.status}</span>
             {j.error && <span className="error">{j.error}</span>}
+            {Array.isArray(j.result?.errors) && j.result.errors.length > 0 && (
+              <span className="small-note">
+                Needs attention:{" "}
+                {j.result.errors
+                  .map((e: { product_id: string }) => e.product_id)
+                  .join(", ")}
+              </span>
+            )}
           </div>
         ))}
+      {inspecting && (
+        <CatalogueMetadata
+          productId={inspecting.id}
+          name={inspecting.name}
+          onClose={() => setInspecting(null)}
+        />
+      )}
       <h2>Orders received</h2>
       <p className="small-note">
         {profile.admin
@@ -552,7 +594,7 @@ function ProductEditor({
       wide
       onOpenChange={(v) => !v && !busy && progress === null && onClose()}
       title={creating ? "Add clothes to your collection" : "Edit your listing"}
-      description="Supply the product facts. We’ll index the listing for discovery and recommendations."
+      description="Add your product facts and photo. Styling details and search are updated automatically."
     >
       <form className="form-stack" onSubmit={save}>
         <fieldset

@@ -45,6 +45,23 @@ export interface Stock {
   aisle?: string;
   rack?: string;
 }
+export interface CatalogueEnrichment {
+  status: "complete" | "needs_review" | "failed" | "unavailable";
+  schema_version: string;
+  input_mode: "image_and_text" | "text_only";
+  assessed_at: string;
+  tags: {
+    field: string;
+    value: string;
+    confidence: number;
+    source: "seller" | "visual" | "styling_inference";
+    evidence: string;
+  }[];
+  unknown_fields: string[];
+  validation_issues: string[];
+  uncertainties: string[];
+  error: string | null;
+}
 export interface Product {
   id: string;
   sku: string;
@@ -141,6 +158,7 @@ export interface Job {
       sample: boolean;
     }[];
     selection_adjustments?: string[];
+    errors?: { product_id: string; error: string }[];
   } | null;
   created_at: string;
   updated_at: string;

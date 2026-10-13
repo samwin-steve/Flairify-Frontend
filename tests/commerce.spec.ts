@@ -137,6 +137,60 @@ test("seller can add photographed clothes, update stock, index and receive mock 
       .locator(".inventory-card")
       .filter({ hasText: "Seller QA white shirt" }),
   ).toContainText("Searchable");
+  // Provider-independent UI contract: evidence is visible to the seller, never editable.
+  await page.route("**/api/admin/products/*/metadata", (route) =>
+    route.fulfill({
+      json: {
+        current: true,
+        enrichment: {
+          status: "complete",
+          schema_version: "1",
+          input_mode: "image_and_text",
+          assessed_at: "2026-10-13T12:00:00Z",
+          tags: [
+            {
+              field: "occasion",
+              value: "office",
+              confidence: 0.85,
+              source: "styling_inference",
+              evidence: "Restrained cut and collar.",
+            },
+          ],
+          unknown_fields: ["fabric", "stretch"],
+          validation_issues: [],
+          uncertainties: [],
+          error: null,
+        },
+      },
+    }),
+  );
+  await page
+    .locator(".inventory-card")
+    .filter({ hasText: "Seller QA white shirt" })
+    .getByRole("button", { name: "Styling details" })
+    .click();
+  await expect(page.getByRole("dialog")).toContainText("85%");
+  await expect(page.getByRole("dialog")).toContainText("Styling suggestion");
+  await expect(page.getByRole("dialog")).toContainText("fabric, stretch");
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `test-results/${test.info().project.name}-catalogue-metadata.png`,
+    fullPage: true,
+  });
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.unroute("**/api/admin/products/*/metadata");
   await navigate(page, "Inventory");
   await page.getByLabel("Search inventory").fill("Seller QA white shirt");
   await expect(page.locator(".inventory-card")).toHaveCount(1);
