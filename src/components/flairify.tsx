@@ -419,8 +419,11 @@ function Application() {
       ?.outfits || [];
   const summaryLook = activeLook || latestOutfits[0];
   function changePage(id: string) {
-    voiceTarget.current = null;
-    voice.stop();
+    // An in-app page change must not silently end the ongoing conversation.
+    // Track manual navigation too, so a spoken "go back" returns to that page.
+    if (voice.active && Object.hasOwn(voicePages, id)) {
+      voiceTrail.current = voiceHistory(voiceTrail.current, id as VoicePage);
+    }
     setPage(id);
     setReferenceTab(false);
     setMobileMenu(false);
@@ -429,6 +432,7 @@ function Application() {
   function openChat(conversation?: Conversation) {
     // Detach callbacks before aborting so an old stream/call cannot reopen itself.
     voiceTarget.current = null;
+    voice.stop();
     const controller = chatController.current;
     chatController.current = null;
     controller?.abort();

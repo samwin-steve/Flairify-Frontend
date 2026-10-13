@@ -124,7 +124,7 @@ Voice availability correction: the reported unavailable message was reproduced w
 
 Say “Include Vishudh Women Brown Kurta and Cobblerz Women Brown Sandals”, then “See it on me”. Retrieved pieces become selected in the cards; explicit generation opens Fitting Room and keeps the spoken reply connected. Generated images, associated buying actions and job status survive refresh. The backend validates product/wardrobe ownership, sizes, stock, photos and consent; errors remain honest. A reconnect never automatically replays a paid generation request.
 
-Voice has a heartbeat, one bounded foreground reconnection attempt, and Google-side session resumption through ADK. End, hiding the tab, navigation and sign-out stop microphone capture and cancel recovery. A partial utterance lost with the connection may need to be repeated. Physical-device microphone quality is not established by browser emulation.
+Voice has a heartbeat, one bounded foreground reconnection attempt, and Google-side session resumption through ADK. End, hiding the tab, switching chats and sign-out stop microphone capture and cancel recovery. Navigating within the app keeps the current call active. A partial utterance lost with the connection may need to be repeated. Physical-device microphone quality is not established by browser emulation.
 
 On mobile, the bottom navigation is removed. All pages remain in the hamburger menu, and chat fills the space below the header.
 
@@ -139,3 +139,5 @@ AI-generated previews retain one short label and fit caveat. Consent controls, s
 ## Navigate during a voice conversation
 
 Ask **Take me back to Stylist**, **Open my wardrobe**, **Show my saved looks**, **Open the shop**, or **Go to my profile**. The call stays active while the app switches pages. **Take me back** returns to the previous screen, including after a preview opens Fitting Room; **Where we started** returns to the start of this call. Chat context and garment selections are preserved. Only known application screens are allowed. Repeated events cannot send the customer back twice, and ending voice cancels late navigation events.
+
+Both on-screen and spoken page changes update the call’s back history. A completed explicit page request has a server fallback when Gemini acknowledges navigation without emitting a tool call. Starting a new chat still ends the previous call. Daily voice-session caps have been removed on the backend; reconnects no longer consume a daily session allowance. Individual connection timeouts and separate search/image-generation limits remain.

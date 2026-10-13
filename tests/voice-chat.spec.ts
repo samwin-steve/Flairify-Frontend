@@ -341,6 +341,7 @@ test("demo Talk opens account sign-in without starting microphone or paid voice"
 test("voice selects pieces, opens Fitting Room without cutting speech, and reconnects once (transport fixture)", async ({
   page,
   request,
+  isMobile,
   context,
 }) => {
   await context.grantPermissions(["microphone"]);
@@ -536,13 +537,46 @@ test("voice selects pieces, opens Fitting Room without cutting speech, and recon
   ).toBeVisible();
   navigate("origin", "where-we-started");
   await expect(page.locator(".conversation")).toBeVisible();
+  // Customers can also use the menu mid-call. A spoken back command must use
+  // the actual screen history, including those manual transitions.
+  for (const [label, heading] of [
+    ["Inventory", "Shop clothes"],
+    ["Fitting Room", "Fitting Room"],
+  ]) {
+    if (isMobile)
+      await page
+        .getByRole("button", { name: "Open navigation", exact: true })
+        .click();
+    const nav = isMobile
+      ? page.getByRole("dialog")
+      : page.getByRole("navigation", { name: "Main navigation" });
+    await nav.getByRole("button", { name: label, exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: heading, exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Voice conversation" }),
+    ).toBeVisible();
+  }
+  navigate("back", "back-after-menu-navigation");
+  await expect(
+    page.getByRole("heading", { name: "Shop clothes", exact: true }),
+  ).toBeVisible();
+  navigate("stylist", "named-stylist-after-menu-navigation");
+  await expect(page.locator(".conversation")).toBeVisible();
   expect(ticketCalls).toBe(2); // The same connection remains active across every page.
-  await page.getByRole("button", { name: "End voice conversation" }).click();
+  await page
+    .locator(".conversation")
+    .getByRole("button", { name: "New chat", exact: true })
+    .click();
   await expect(
     page.getByRole("region", { name: "Voice conversation" }),
   ).toHaveCount(0);
   await page.waitForTimeout(2500);
-  expect(ticketCalls).toBe(2); // Never reconnect after an explicit End.
+  expect(ticketCalls).toBe(2); // Switching chats must still end voice and cancel recovery.
+  expect(
+    await page.evaluate(() => localStorage.getItem("flairify-conversation")),
+  ).toBe("");
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
