@@ -1,5 +1,14 @@
 import { getAuth } from "firebase/auth";
 import { getApps } from "firebase/app";
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
 export async function token() {
   if (getApps().length && getAuth().currentUser)
     return await getAuth().currentUser!.getIdToken();
@@ -21,10 +30,11 @@ export async function api<T = unknown>(
     const error = await response
       .json()
       .catch(() => ({ detail: "Something went wrong" }));
-    throw new Error(
+    throw new ApiError(
       typeof error.detail === "string"
         ? error.detail
         : "Please check your entries and try again.",
+      response.status,
     );
   }
   return response.json();

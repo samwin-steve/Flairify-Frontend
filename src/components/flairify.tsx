@@ -183,6 +183,9 @@ function Application() {
   const [addPhotos, setAddPhotos] = useState(false);
   const [filter, setFilter] = useState("all");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [voiceSelection, setVoiceSelection] = useState<PreviewPiece[] | null>(
+    null,
+  );
   const voiceTarget = useRef<string | null>(null);
   const voice = useVoiceStylist({
     onStart: (id) => {
@@ -230,9 +233,22 @@ function Application() {
             ];
       });
     },
+    onSelection: (pieces, adjustments) => {
+      if (!voiceTarget.current) return;
+      setVoiceSelection(pieces);
+      if (adjustments.length) setToast(adjustments.join(" "));
+    },
+    onPreview: () => {
+      if (!voiceTarget.current) return;
+      qc.invalidateQueries({ queryKey: ["jobs"] });
+      setReferenceTab(false);
+      setMobileMenu(false);
+      setPage("fitting"); // Keep voice connected so the spoken acknowledgement can finish.
+    },
     onTurn: (conversation) => {
       if (voiceTarget.current !== conversation.id) return;
       setMessages(conversation.messages);
+      setVoiceSelection(conversation.voice_selection || []);
       setRefinementLook(null);
       qc.invalidateQueries({ queryKey: ["conversations"] });
       requestAnimationFrame(() =>
@@ -344,6 +360,9 @@ function Application() {
     if (candidate) {
       setConvoId(candidate.id);
       setMessages(candidate.messages);
+      setVoiceSelection(
+        candidate.voice_selection?.length ? candidate.voice_selection : null,
+      );
       localStorage.setItem("flairify-conversation", candidate.id);
     }
     setActiveHistoryReady(true);
@@ -402,6 +421,11 @@ function Application() {
     setConvoId(conversation?.id || null);
     localStorage.setItem("flairify-conversation", conversation?.id || "");
     setMessages(conversation?.messages || []);
+    setVoiceSelection(
+      conversation?.voice_selection?.length
+        ? conversation.voice_selection
+        : null,
+    );
     setInput("");
     setRefinementLook(null);
     setActiveLook(null);
@@ -487,6 +511,7 @@ function Application() {
     previewKeys.current.clear();
     setOnboarding(false);
     setMessages([]);
+    setVoiceSelection(null);
     setConvoId(null);
     setRefinementLook(null);
     localStorage.removeItem("flairify-conversation");
@@ -1350,11 +1375,28 @@ function Application() {
                               Voice {m.interrupted ? "· Interrupted" : ""}
                             </span>
                           )}
+                          {m.preview_job_id && (
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setReferenceTab(false);
+                                changePage("fitting");
+                              }}
+                            >
+                              <WandSparkles size={16} /> View preview in Fitting
+                              Room
+                            </Button>
+                          )}
                           {(m.id === streamingMessageId ? [] : m.outfits)?.map(
                             (o, i) => (
                               <LookCard
                                 key={o.id}
                                 outfit={o}
+                                voiceSelection={voiceSelection}
+                                onVoiceSelection={(pieces) => {
+                                  if (voice.active) voice.select(pieces);
+                                  else setVoiceSelection(pieces);
+                                }}
                                 index={i}
                                 isSaved={
                                   !!saved.data?.looks.some((s) => s.id === o.id)
@@ -1403,6 +1445,25 @@ function Application() {
                 )}
               </div>
               <div className="composer-area">
+                {!!voiceSelection?.length && (
+                  <div
+                    className="voice-selection"
+                    aria-label="Selected for your preview"
+                  >
+                    <span>
+                      <strong>Your preview</strong> ·{" "}
+                      {voiceSelection.map((p) => p.name).join(" + ")}
+                    </span>
+                    <Button
+                      variant="outline"
+                      onClick={() =>
+                        action(() => requestTryOn(selections(voiceSelection)))
+                      }
+                    >
+                      <WandSparkles size={16} /> See it on me
+                    </Button>
+                  </div>
+                )}
                 {messages.length > 0 && !busy && !voice.active && (
                   <div className="followup-chips">
                     {[
@@ -1709,38 +1770,30 @@ function Application() {
         {page === "admin" && profile.data && (
           <Admin profile={profile.data} demoAdmin={!!config.data?.demo_admin} />
         )}
-        <nav className="mobile-bottom-nav" aria-label="Mobile navigation">
-          {navigation
-            .filter((n) =>
-              [
-                "stylist",
-                "wardrobe",
-                "inventory",
-                "orders",
-                "profile",
-              ].includes(n.id),
-            )
-            .map((n) => (
-              <button
-                key={n.id}
-                className={page === n.id ? "active" : ""}
-                onClick={() => changePage(n.id)}
-              >
-                <n.icon size={20} />
-                <span>
-                  {n.label === "My Orders"
-                    ? "Orders"
-                    : n.label === "My Wardrobe"
-                      ? "Wardrobe"
-                      : n.label === "Fitting Room"
-                        ? "Fitting"
-                        : n.label === "Saved Looks"
-                          ? "Saved"
-                          : n.label}
-                </span>
-              </button>
-            ))}
-        </nav>
+        {page !== "stylist" && voice.error && (
+          <div className="voice-notice" role="alert">
+            {voice.error}
+            <button
+              className="icon-button"
+              onClick={voice.clearError}
+              aria-label="Dismiss voice message"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+        {page !== "stylist" && voice.active && (
+          <div className="voice-floating">
+            <VoiceConversation
+              phase={voice.phase}
+              muted={voice.muted}
+              speaking={voice.speaking}
+              seconds={voice.seconds}
+              onMute={voice.toggleMute}
+              onEnd={() => voice.stop()}
+            />
+          </div>
+        )}
       </div>
       {toast && (
         <div className="toast" role="status">
@@ -1827,8 +1880,12 @@ function LookCard({
   onSetup,
   onReference,
   onSignIn,
+  voiceSelection,
+  onVoiceSelection,
 }: {
   outfit: Outfit;
+  voiceSelection?: PreviewPiece[] | null;
+  onVoiceSelection?: (pieces: PreviewPiece[]) => void;
   index: number;
   isSaved: boolean;
   onSave: () => void;
@@ -1841,14 +1898,22 @@ function LookCard({
   onReference: () => void;
   onSignIn?: () => void;
 }) {
-  const [selected, setSelected] = useState<PreviewPiece[]>([]);
+  const [localSelected, setLocalSelected] = useState<PreviewPiece[]>([]);
+  const allSelected = voiceSelection ?? localSelected;
+  const selected = allSelected.filter((p) =>
+    (p.kind === "product" ? outfit.products : outfit.owned).some(
+      (item) => item.id === p.id,
+    ),
+  );
   const [notice, setNotice] = useState("");
   const [previewError, setPreviewError] = useState("");
   const [generating, setGenerating] = useState(false);
   const lock = useRef(false);
   function toggle(piece: PreviewPiece) {
-    const next = togglePiece(selected, piece);
-    setSelected(next.selected);
+    const next = togglePiece(allSelected, piece);
+    if (voiceSelection != null && onVoiceSelection)
+      onVoiceSelection(next.selected);
+    else setLocalSelected(next.selected);
     setPreviewError("");
     setNotice(
       next.removed.length

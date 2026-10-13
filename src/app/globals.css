@@ -1592,9 +1592,7 @@ svg {
 }
 .mobile-only,
 .mobile-details,
-.mobile-bottom-nav {
-  display: none;
-}
+
 /* Forms and wardrobe */
 .form-stack {
   display: flex;
@@ -2574,7 +2572,7 @@ svg {
   .app-body {
     margin: 0;
     width: 100%;
-    padding-bottom: 65px;
+    padding-bottom: 0;
   }
   .app-header {
     height: 63px;
@@ -2606,47 +2604,12 @@ svg {
   .mobile-only {
     display: inline-flex;
   }
-  .mobile-bottom-nav {
-    display: flex;
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 65px;
-    padding: 5px 10px max(5px, env(safe-area-inset-bottom));
-    background: #fffcfd;
-    border-top: 1px solid var(--line);
-    z-index: 40;
-    justify-content: space-around;
-  }
-  .mobile-bottom-nav > button {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    color: #947985;
-    font-size: 8px;
-    min-width: 52px;
-    min-height: 48px;
-  }
-  .mobile-bottom-nav > button.active {
-    color: var(--rose);
-  }
-  .mobile-bottom-nav > button.active:before {
-    content: "";
-    height: 2px;
-    width: 23px;
-    background: var(--rose);
-    position: absolute;
-    top: 0;
-    border-radius: 4px;
-  }
+
   .stylist-layout {
-    min-height: calc(100dvh - 128px);
+    min-height: calc(100dvh - 63px);
   }
   .conversation {
-    height: calc(100dvh - 128px);
+    height: calc(100dvh - 63px);
   }
   .conversation-scroll {
     padding: 29px 22px 20px;
@@ -3394,9 +3357,6 @@ svg {
 .budget-note > strong {
   color: #44613d;
 }
-.mobile-bottom-nav button {
-  color: #74636d;
-}
 
 /* Inventory and 2D preview inputs */
 .inventory-filters {
@@ -3551,11 +3511,6 @@ svg {
   .try-on-inputs select {
     min-width: 0;
     width: 100%;
-  }
-  .mobile-bottom-nav > button {
-    min-width: 0;
-    flex: 1;
-    font-size: 10px;
   }
 }
 
@@ -3717,9 +3672,6 @@ svg {
   min-height: 100px;
 }
 @media (max-width: 767px) {
-  .mobile-bottom-nav {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
   .checkout-item {
     gap: 12px;
   }
@@ -4389,5 +4341,51 @@ svg {
   .composer-send,
   .stylist-composer {
     transition: none;
+  }
+}
+
+/* Voice actions stay available while a requested preview is being created. */
+.voice-selection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #fff8fa;
+  font-size: 12px;
+}
+.voice-selection > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.voice-selection .button {
+  flex-shrink: 0;
+}
+.voice-floating {
+  position: sticky;
+  bottom: 0;
+  z-index: 35;
+  margin: 0 auto;
+  padding: 12px max(16px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom));
+  max-width: 900px;
+  background: #fff8faee;
+  backdrop-filter: blur(12px);
+}
+@media (max-width: 767px) {
+  .composer-area {
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .voice-selection {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .voice-selection > span {
+    flex-basis: 100%;
+    max-height: 42px;
+    overflow-y: auto;
   }
 }

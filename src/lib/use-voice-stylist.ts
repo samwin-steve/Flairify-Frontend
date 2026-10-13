@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { post } from "./api";
+import { api, ApiError, post } from "./api";
 import { VoicePlayer } from "./voice-audio";
-import type { Conversation, Outfit } from "./types";
+import type { Conversation, Outfit, Job } from "./types";
+
+import type { PreviewPiece } from "./try-on-selection";
 
 type Options = {
   conversation_id: string | null;
@@ -16,6 +18,8 @@ type Callbacks = {
   onTranscript: (role: "user" | "assistant", text: string) => void;
   onOutfits: (outfits: Outfit[]) => void;
   onTurn: (conversation: Conversation) => void;
+  onSelection: (pieces: PreviewPiece[], adjustments: string[]) => void;
+  onPreview: (job: Job) => void;
   onEnd: (id: string) => void;
 };
 type Connection = {
@@ -29,6 +33,13 @@ type Connection = {
   id: string;
   cancelled: boolean;
   muted: boolean;
+  ready: boolean;
+  ending: boolean;
+  reconnects: number;
+  recovering: boolean;
+  options: Options;
+  lastPong: number;
+  retryTimer?: ReturnType<typeof setTimeout>;
   timer?: ReturnType<typeof setInterval>;
   deadline?: ReturnType<typeof setTimeout>;
 };
@@ -48,6 +59,7 @@ export function useVoiceStylist(callbacks: Callbacks) {
     if (c.cancelled) return;
     c.cancelled = true;
     clearInterval(c.timer);
+    clearTimeout(c.retryTimer);
     clearTimeout(c.deadline);
     c.stream?.getTracks().forEach((t) => t.stop());
     c.capture?.disconnect();
@@ -69,6 +81,9 @@ export function useVoiceStylist(callbacks: Callbacks) {
   function stop(notify = true) {
     const c = current.current;
     if (!c) return;
+    c.ending = true;
+    c.ready = false;
+    clearTimeout(c.retryTimer);
     c.stream?.getTracks().forEach((t) => t.stop());
     c.player.stop();
     if (c.socket?.readyState === WebSocket.OPEN) {
@@ -91,6 +106,175 @@ export function useVoiceStylist(callbacks: Callbacks) {
     if (c.muted && c.socket?.readyState === WebSocket.OPEN)
       c.socket.send(JSON.stringify({ type: "mute" }));
     setMuted(c.muted);
+  }
+
+  function select(pieces: PreviewPiece[]) {
+    const c = current.current;
+    if (c?.ready && !c.ending && c.socket?.readyState === WebSocket.OPEN)
+      c.socket.send(
+        JSON.stringify({
+          type: "selection",
+          pieces: pieces.map((p) => `${p.kind}:${p.id}`),
+        }),
+      );
+  }
+
+  function recover(c: Connection) {
+    if (c.cancelled || c.ending || c.recovering) return;
+    if (!c.ready || c.reconnects >= 1 || document.hidden) {
+      setError(
+        "The voice connection dropped. Your saved chat and previews are kept. Tap Talk to continue.",
+      );
+      dispose(c);
+      return;
+    }
+    c.ready = false;
+    c.recovering = true;
+    c.reconnects++;
+    c.socket?.close();
+    c.player.stop();
+    clearTimeout(c.deadline);
+    clearInterval(c.timer);
+    setSpeaking(false);
+    setPhase("Reconnecting to your stylist…");
+    // Keep the permitted microphone but drop audio until ready; never replay an
+    // unfinished request, especially a generation action, after a disconnect.
+    let attempts = 0;
+    const attempt = async () => {
+      if (c.cancelled || c.ending || document.hidden) return;
+      try {
+        await connect(c);
+      } catch (e) {
+        if (c.cancelled || c.ending) return;
+        if (e instanceof ApiError && e.status === 409 && ++attempts < 3) {
+          c.retryTimer = setTimeout(attempt, 3000 * attempts);
+          return;
+        }
+        setError(
+          e instanceof Error ? e.message : "Please tap Talk to reconnect.",
+        );
+        dispose(c);
+      }
+    };
+    c.retryTimer = setTimeout(attempt, 2000);
+  }
+
+  async function connect(c: Connection) {
+    setPhase(
+      c.reconnects
+        ? "Reconnecting to your stylist…"
+        : "Connecting to your stylist…",
+    );
+    const ticket = await api<{
+      url: string;
+      ticket: string;
+      conversation_id: string;
+    }>("/voice/sessions", {
+      method: "POST",
+      body: JSON.stringify({
+        ...c.options,
+        conversation_id: c.id || c.options.conversation_id,
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (c.cancelled || c.ending) {
+      void post("/voice/sessions/cancel", { ticket: ticket.ticket }).catch(
+        () => {},
+      );
+      return;
+    }
+    c.id = ticket.conversation_id;
+    latest.current.onStart(c.id);
+    const url = new URL(ticket.url);
+    if (
+      url.protocol !== "wss:" &&
+      !(
+        url.protocol === "ws:" &&
+        ["localhost", "127.0.0.1"].includes(url.hostname)
+      )
+    )
+      throw new Error("The voice connection requires a secure address.");
+    const socket = new WebSocket(url);
+    c.socket = socket;
+    socket.binaryType = "arraybuffer";
+    c.deadline = setTimeout(() => {
+      if (c.cancelled || c.ending) return;
+      setError("Voice could not connect. Please try again.");
+      dispose(c);
+    }, 30000);
+    socket.onopen = () => {
+      if (!c.cancelled && !c.ending && c.socket === socket)
+        socket.send(JSON.stringify({ ticket: ticket.ticket }));
+    };
+    socket.onmessage = (event) => {
+      if (c.cancelled || c.socket !== socket) return;
+      try {
+        if (event.data instanceof ArrayBuffer) {
+          if (!c.ending) {
+            c.player.play(event.data);
+            setSpeaking(true);
+          }
+          return;
+        }
+        const data = JSON.parse(event.data);
+        if (data.type === "ready") {
+          if (c.ending) return;
+          c.ready = true;
+          c.recovering = false;
+          c.lastPong = Date.now();
+          clearTimeout(c.deadline);
+          clearInterval(c.timer); // Google session resumption can send ready again.
+          setPhase("Listening");
+          if (c.reconnects)
+            setError(
+              "Reconnected. If I missed your last request, please say it again. Your previews are kept.",
+            );
+          let ticks = 0;
+          c.timer = setInterval(() => {
+            setSeconds((s) => s + 1);
+            setSpeaking(c.player.speaking);
+            if (++ticks % 15 === 0 && socket.readyState === WebSocket.OPEN)
+              socket.send(JSON.stringify({ type: "ping" }));
+            if (Date.now() - c.lastPong > 45000) recover(c);
+          }, 1000);
+        } else if (data.type === "pong") c.lastPong = Date.now();
+        else if (data.type === "transcript")
+          latest.current.onTranscript(data.role, data.text);
+        else if (data.type === "outfits")
+          latest.current.onOutfits(data.outfits);
+        else if (data.type === "selection")
+          latest.current.onSelection(data.pieces, data.adjustments || []);
+        else if (data.type === "preview") latest.current.onPreview(data.job);
+        else if (data.type === "turn") {
+          latest.current.onTurn(data.conversation);
+          if (!c.ending) setPhase("Listening");
+        } else if (data.type === "status") setPhase(data.message);
+        else if (data.type === "notice") setError(data.message);
+        else if (data.type === "interrupted") {
+          c.player.stop();
+          setSpeaking(false);
+          setPhase("Listening");
+        } else if (data.type === "error" || data.type === "ended") {
+          if (!c.ending) setError(data.message);
+          dispose(c);
+        }
+      } catch (e) {
+        setError(
+          e instanceof Error
+            ? e.message
+            : "Voice was interrupted. Your saved chat is still here.",
+        );
+        dispose(c);
+      }
+    };
+    socket.onerror = () => {
+      if (c.socket === socket) socket.close();
+    };
+    socket.onclose = () => {
+      if (c.cancelled || c.socket !== socket) return;
+      if (c.ending) dispose(c);
+      else recover(c);
+    };
   }
 
   async function start(options: Options) {
@@ -125,6 +309,12 @@ export function useVoiceStylist(callbacks: Callbacks) {
       id: "",
       cancelled: false,
       muted: false,
+      ready: false,
+      ending: false,
+      reconnects: 0,
+      recovering: false,
+      options,
+      lastPong: Date.now(),
     };
     current.current = c;
     setActive(true);
@@ -145,35 +335,6 @@ export function useVoiceStylist(callbacks: Callbacks) {
         return;
       }
       await context.audioWorklet.addModule("/voice-capture.worklet.js");
-      setPhase("Connecting to your stylist…");
-      const ticket = await post<{
-        url: string;
-        ticket: string;
-        conversation_id: string;
-        max_seconds: number;
-      }>(
-        "/voice/sessions",
-        options, // Authentication stays in the normal API flow.
-      );
-      if (c.cancelled) {
-        void post("/voice/sessions/cancel", { ticket: ticket.ticket }).catch(
-          () => {},
-        );
-        return;
-      }
-      c.id = ticket.conversation_id;
-      latest.current.onStart(c.id);
-      const url = new URL(ticket.url);
-      if (
-        url.protocol !== "wss:" &&
-        !(
-          url.protocol === "ws:" &&
-          ["localhost", "127.0.0.1"].includes(url.hostname)
-        )
-      )
-        throw new Error("The voice connection requires a secure address.");
-      c.socket = new WebSocket(url);
-      c.socket.binaryType = "arraybuffer";
       c.source = context.createMediaStreamSource(c.stream);
       c.capture = new AudioWorkletNode(context, "flairify-capture");
       c.gain = context.createGain();
@@ -181,73 +342,21 @@ export function useVoiceStylist(callbacks: Callbacks) {
       c.source.connect(c.capture);
       c.capture.connect(c.gain);
       c.gain.connect(context.destination);
-      let ready = false;
       c.capture.port.onmessage = (event: MessageEvent<ArrayBuffer>) => {
         if (
-          ready &&
+          c.ready &&
           !c.muted &&
           !c.cancelled &&
           c.socket?.readyState === WebSocket.OPEN
         ) {
           if (c.socket.bufferedAmount > 128000) {
-            setError(
-              "Your connection is struggling with live audio. Reconnect or continue typing.",
-            );
-            stop();
+            recover(c);
             return;
           }
           c.socket.send(event.data);
         }
       };
-      c.deadline = setTimeout(() => {
-        setError("Voice could not connect. Please try again.");
-        dispose(c);
-      }, 30000);
-      c.socket.onopen = () =>
-        c.socket?.send(JSON.stringify({ ticket: ticket.ticket }));
-      c.socket.onmessage = (event) => {
-        if (c.cancelled) return;
-        try {
-          if (event.data instanceof ArrayBuffer) {
-            c.player.play(event.data);
-            setSpeaking(true);
-            return;
-          }
-          const data = JSON.parse(event.data);
-          if (data.type === "ready") {
-            ready = true;
-            clearTimeout(c.deadline);
-            setPhase("Listening");
-            c.timer = setInterval(() => {
-              setSeconds((s) => s + 1);
-              setSpeaking(c.player.speaking);
-            }, 1000);
-          } else if (data.type === "transcript") {
-            latest.current.onTranscript(data.role, data.text);
-          } else if (data.type === "outfits")
-            latest.current.onOutfits(data.outfits);
-          else if (data.type === "turn") {
-            latest.current.onTurn(data.conversation);
-            setPhase("Listening");
-          } else if (data.type === "status") setPhase(data.message);
-          else if (data.type === "interrupted") {
-            c.player.stop();
-            setSpeaking(false);
-            setPhase("Listening");
-          } else if (data.type === "error" || data.type === "ended") {
-            setError(data.message);
-            dispose(c);
-          }
-        } catch {
-          setError("Voice was interrupted. Your saved chat is still here.");
-          dispose(c);
-        }
-      };
-      c.socket.onerror = () => {
-        setError("Voice could not connect. Please try again or keep typing.");
-        dispose(c);
-      };
-      c.socket.onclose = () => dispose(c);
+      await connect(c);
     } catch (e) {
       if (!c.cancelled) {
         const denied =
@@ -291,6 +400,7 @@ export function useVoiceStylist(callbacks: Callbacks) {
     start,
     stop,
     toggleMute,
+    select,
     clearError: () => setError(""),
   };
 }

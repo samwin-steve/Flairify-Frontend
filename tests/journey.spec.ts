@@ -190,8 +190,10 @@ test("direct photo upload, ownership review, persistence and 3D fallback", async
     name: /^My Wardrobe/,
   });
   if (await wardrobe.isVisible()) await wardrobe.click();
-  else
-    await page.getByRole("button", { name: "Wardrobe", exact: true }).click();
+  else {
+    await page.getByRole("button", { name: "Open navigation" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: /^My Wardrobe/ }).click();
+  }
   await expect(
     page.getByRole("button", { name: "My uploaded shirt", exact: true }),
   ).toBeVisible();
@@ -253,10 +255,12 @@ test("inventory lists available products and requests sign-in for real previews"
     .getByRole("button", { name: "Meet your stylist", exact: true })
     .click();
   await expect(page.locator(".app-shell")).toBeVisible();
-  await page
-    .getByRole("button", { name: "Inventory", exact: true })
-    .filter({ visible: true })
-    .click();
+  const inventory = page.getByRole("button", { name: "Inventory", exact: true }).filter({ visible: true });
+  if (await inventory.count()) await inventory.click();
+  else {
+    await page.getByRole("button", { name: "Open navigation" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Inventory", exact: true }).click();
+  }
   await expect(page.locator(".inventory-card")).toHaveCount(24);
   await page.getByLabel("Search inventory").fill("A fresh white shirt");
   await expect(page.locator(".inventory-card")).toHaveCount(1);

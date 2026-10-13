@@ -97,6 +97,7 @@ export interface Outfit {
 export interface Message {
   source?: "text" | "voice";
   interrupted?: boolean;
+  preview_job_id?: string | null;
   id: string;
   role: "user" | "assistant";
   content: string;
@@ -104,6 +105,8 @@ export interface Message {
   created_at: string;
 }
 export interface Conversation {
+  voice_selection?: import("./try-on-selection").PreviewPiece[];
+  voice_preview_job_id?: string | null;
   id: string;
   title: string;
   messages: Message[];
