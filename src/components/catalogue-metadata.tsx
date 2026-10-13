@@ -51,9 +51,13 @@ export function CatalogueMetadata({
       {record && (
         <div className="form-stack catalogue-metadata">
           <p className="small-note">
-            {record.input_mode === "image_and_text"
-              ? "Product photo and listing analyzed"
-              : "Listing text analyzed; no product photograph was available"}
+            {record.status === "failed"
+              ? "Product analysis could not finish"
+              : record.status === "unavailable"
+                ? "Product analysis is unavailable"
+                : record.input_mode === "image_and_text"
+                  ? "Product photo and listing analyzed"
+                  : "Listing text analyzed; no product photograph was available"}
             .
             {data.data?.current
               ? ""
