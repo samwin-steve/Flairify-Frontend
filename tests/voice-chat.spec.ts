@@ -495,6 +495,48 @@ test("voice selects pieces, opens Fitting Room without cutting speech, and recon
     path: `test-results/${test.info().project.name}-voice-fitting.png`,
     fullPage: true,
   });
+  const navigate = (destination: string, request_id: string) =>
+    peer.send(JSON.stringify({ type: "navigation", destination, request_id }));
+  navigate("back", "return-from-preview");
+  await expect(page.locator(".conversation")).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Voice conversation" }),
+  ).toBeVisible();
+  for (const p of pieces)
+    await expect(
+      page
+        .getByRole("checkbox", { name: `Try on ${p.name}`, exact: true })
+        .last(),
+    ).toBeChecked();
+  // These events come from Google's navigation tool; no new ticket/search/preview is needed.
+  for (const [destination, heading] of [
+    ["inventory", "Shop clothes"],
+    ["wardrobe", "My wardrobe"],
+    ["saved", "Saved looks"],
+    ["orders", "My orders"],
+    ["profile", "Profile & preferences"],
+    ["fitting", "Fitting Room"],
+  ]) {
+    navigate(destination, "open-" + destination);
+    await expect(
+      page.getByRole("heading", { name: heading, exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Voice conversation" }),
+    ).toBeVisible();
+  }
+  navigate("back", "back-once");
+  await expect(
+    page.getByRole("heading", { name: "Profile & preferences" }),
+  ).toBeVisible();
+  navigate("back", "back-once"); // duplicate delivery must not go back a second time
+  navigate("https://example.com", "invalid-url");
+  await expect(
+    page.getByRole("heading", { name: "Profile & preferences" }),
+  ).toBeVisible();
+  navigate("origin", "where-we-started");
+  await expect(page.locator(".conversation")).toBeVisible();
+  expect(ticketCalls).toBe(2); // The same connection remains active across every page.
   await page.getByRole("button", { name: "End voice conversation" }).click();
   await expect(
     page.getByRole("region", { name: "Voice conversation" }),

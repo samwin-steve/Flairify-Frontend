@@ -3,6 +3,12 @@ import { useEffect, useRef, useState } from "react";
 import { StylistComposer } from "./stylist-composer";
 import { VoiceConversation } from "./voice-conversation";
 import { useVoiceStylist } from "@/lib/use-voice-stylist";
+import {
+  voiceHistory,
+  voicePages,
+  type VoiceDestination,
+  type VoicePage,
+} from "@/lib/voice-navigation";
 import { streamChat } from "@/lib/chat-stream";
 import { shoppingReady, selectedConversation } from "@/lib/shopping-session";
 import {
@@ -186,6 +192,22 @@ function Application() {
     null,
   );
   const voiceTarget = useRef<string | null>(null);
+  const voiceTrail = useRef<VoicePage[]>(["stylist"]);
+
+  function navigateByVoice(destination: VoiceDestination) {
+    if (!voiceTarget.current) return;
+    voiceTrail.current = voiceHistory(voiceTrail.current, destination);
+    const target = voiceTrail.current.at(-1)!;
+    setPage(target);
+    setReferenceTab(false);
+    setMobileMenu(false);
+    setDetails(false);
+    setAddPhotos(false);
+    setCheckout(null);
+    setError("");
+    setToast(voicePages[target]);
+  }
+
   const voice = useVoiceStylist({
     onStart: (id) => {
       voiceTarget.current = id;
@@ -240,10 +262,9 @@ function Application() {
     onPreview: () => {
       if (!voiceTarget.current) return;
       qc.invalidateQueries({ queryKey: ["jobs"] });
-      setReferenceTab(false);
-      setMobileMenu(false);
-      setPage("fitting"); // Keep voice connected so the spoken acknowledgement can finish.
+      navigateByVoice("fitting");
     },
+    onNavigate: navigateByVoice,
     onTurn: (conversation) => {
       if (voiceTarget.current !== conversation.id) return;
       setMessages(conversation.messages);
@@ -624,6 +645,7 @@ function Application() {
   }
 
   function startVoice() {
+    if (voice.active) return;
     if (!ready) {
       setOnboarding(true);
       return;
@@ -633,6 +655,9 @@ function Application() {
       return;
     }
     setError("");
+    voiceTrail.current = [
+      Object.hasOwn(voicePages, page) ? (page as VoicePage) : "stylist",
+    ];
     // The authenticated ticket endpoint checks current availability. A pending
     // or stale capability response must not block a valid signed-in customer.
     void voice.start({
@@ -1694,11 +1719,7 @@ function Application() {
         </div>
       )}
       {mobileMenu && (
-        <Modal
-          open
-          onOpenChange={setMobileMenu}
-          title="Your Flairify"
-        >
+        <Modal open onOpenChange={setMobileMenu} title="Your Flairify">
           <div className="mobile-sidebar">{nav}</div>
         </Modal>
       )}

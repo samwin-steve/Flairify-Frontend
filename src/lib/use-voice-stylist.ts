@@ -6,6 +6,7 @@ import { VoicePlayer } from "./voice-audio";
 import type { Conversation, Outfit, Job } from "./types";
 
 import type { PreviewPiece } from "./try-on-selection";
+import { isVoiceDestination, type VoiceDestination } from "./voice-navigation";
 
 type Options = {
   conversation_id: string | null;
@@ -20,6 +21,7 @@ type Callbacks = {
   onTurn: (conversation: Conversation) => void;
   onSelection: (pieces: PreviewPiece[], adjustments: string[]) => void;
   onPreview: (job: Job) => void;
+  onNavigate: (destination: VoiceDestination) => void;
   onEnd: (id: string) => void;
 };
 type Connection = {
@@ -39,6 +41,7 @@ type Connection = {
   recovering: boolean;
   options: Options;
   lastPong: number;
+  navigations: Set<string>;
   retryTimer?: ReturnType<typeof setTimeout>;
   timer?: ReturnType<typeof setInterval>;
   deadline?: ReturnType<typeof setTimeout>;
@@ -217,6 +220,12 @@ export function useVoiceStylist(callbacks: Callbacks) {
           return;
         }
         const data = JSON.parse(event.data);
+        // Ignore late tool actions while End is saving the conversation.
+        if (
+          c.ending &&
+          ["navigation", "preview", "selection", "outfits"].includes(data.type)
+        )
+          return;
         if (data.type === "ready") {
           if (c.ending) return;
           c.ready = true;
@@ -245,7 +254,18 @@ export function useVoiceStylist(callbacks: Callbacks) {
         else if (data.type === "selection")
           latest.current.onSelection(data.pieces, data.adjustments || []);
         else if (data.type === "preview") latest.current.onPreview(data.job);
-        else if (data.type === "turn") {
+        else if (data.type === "navigation") {
+          if (
+            !isVoiceDestination(data.destination) ||
+            typeof data.request_id !== "string" ||
+            !data.request_id ||
+            data.request_id.length > 150
+          )
+            return;
+          if (c.navigations.has(data.request_id)) return;
+          c.navigations.add(data.request_id);
+          latest.current.onNavigate(data.destination);
+        } else if (data.type === "turn") {
           latest.current.onTurn(data.conversation);
           if (!c.ending) setPhase("Listening");
         } else if (data.type === "status") setPhase(data.message);
@@ -315,6 +335,7 @@ export function useVoiceStylist(callbacks: Callbacks) {
       recovering: false,
       options,
       lastPong: Date.now(),
+      navigations: new Set(),
     };
     current.current = c;
     setActive(true);

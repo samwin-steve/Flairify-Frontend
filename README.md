@@ -135,3 +135,7 @@ Voice actions release verification (13 October 2026): 25 logic tests and 42 dist
 The interface uses concise shopping language across onboarding, Stylist, Inventory, Saved Looks, Fitting Room, Orders, Profile and Seller Studio. Demo/sample badges, repetitive marketing footers and the Profile integration-status panel have been removed. Guest entry is **Browse as guest**; fixture wardrobe selection is **Choose starter pieces** and still requires ownership confirmation. The generic asset is named **3D studio mannequin**, never the customer.
 
 AI-generated previews retain one short label and fit caveat. Consent controls, stock validation, sign-in requirements, order behavior and error handling are unchanged. Preview cards use current UI copy even for persisted results with old labels. No catalogue provenance flags, access controls or paid-model restrictions were removed.
+
+## Navigate during a voice conversation
+
+Ask **Take me back to Stylist**, **Open my wardrobe**, **Show my saved looks**, **Open the shop**, or **Go to my profile**. The call stays active while the app switches pages. **Take me back** returns to the previous screen, including after a preview opens Fitting Room; **Where we started** returns to the start of this call. Chat context and garment selections are preserved. Only known application screens are allowed. Repeated events cannot send the customer back twice, and ending voice cancels late navigation events.
