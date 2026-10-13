@@ -120,14 +120,9 @@ test("continue a chat, explain a look, replace only shoes and restore history", 
   ).toBe("none");
   await page.reload();
   await expect(page.locator(".message.assistant")).toHaveCount(3);
-  const fresh = page
-    .getByRole("button", { name: "New conversation" })
-    .filter({ visible: true });
-  if (!(await fresh.count()))
-    await page.getByRole("button", { name: "Open navigation" }).click();
   await page
-    .getByRole("button", { name: "New conversation" })
-    .filter({ visible: true })
+    .locator(".chat-actions")
+    .getByRole("button", { name: "New chat", exact: true })
     .click();
   await expect(page.locator(".message")).toHaveCount(0);
   await page.reload();

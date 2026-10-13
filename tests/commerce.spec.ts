@@ -4,6 +4,10 @@ import AxeBuilder from "@axe-core/playwright";
 async function start(page: import("@playwright/test").Page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Explore sample demo" }).click();
+  await page.getByLabel("What should we call you?").fill("Commerce QA");
+  await page.getByLabel("Clothing size", { exact: true }).selectOption("M");
+  await page.getByLabel("Shoe size (EU)").selectOption("39");
+  await page.getByRole("button", { name: "Save and continue" }).click();
   await page.getByRole("button", { name: "Browse clothes first" }).click();
   await expect(
     page.getByRole("heading", { name: "Find your next favourite." }),
@@ -28,10 +32,7 @@ test("direct mock purchase without wardrobe saves order and no payment", async (
   page,
 }) => {
   await start(page);
-  await page
-    .getByRole("button", { name: "Buy", exact: true })
-    .first()
-    .click();
+  await page.getByRole("button", { name: "Buy", exact: true }).first().click();
   await expect(
     page.getByRole("heading", { name: "Your checkout" }),
   ).toBeVisible();
@@ -39,11 +40,7 @@ test("direct mock purchase without wardrobe saves order and no payment", async (
     page.getByRole("button", { name: "Buy", exact: true }),
   ).toBeDisabled();
   await page.getByLabel(/^Quantity for/).selectOption("2");
-  await page
-    .getByLabel(
-      "I confirm the items, sizes and quantities.",
-    )
-    .check();
+  await page.getByLabel("I confirm the items, sizes and quantities.").check();
   const axe = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21aa"])
     .analyze();
@@ -62,9 +59,7 @@ test("direct mock purchase without wardrobe saves order and no payment", async (
     path: `test-results/${test.info().project.name}-checkout.png`,
     fullPage: true,
   });
-  await page
-    .getByRole("button", { name: "Buy", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Buy", exact: true }).click();
   await expect(page.getByRole("heading", { name: "My orders." })).toBeVisible();
   await expect(page.locator(".order-card")).toHaveCount(1);
   await expect(page.locator(".order-card")).toContainText("Qty 2");
@@ -143,14 +138,8 @@ test("seller can add photographed clothes, update stock, index and receive mock 
   await page.getByLabel("Search inventory").fill("Seller QA white shirt");
   await expect(page.locator(".inventory-card")).toHaveCount(1);
   await page.getByRole("button", { name: "Buy", exact: true }).click();
-  await page
-    .getByLabel(
-      "I confirm the items, sizes and quantities.",
-    )
-    .check();
-  await page
-    .getByRole("button", { name: "Buy", exact: true })
-    .click();
+  await page.getByLabel("I confirm the items, sizes and quantities.").check();
+  await page.getByRole("button", { name: "Buy", exact: true }).click();
   await expect(page.locator(".order-card")).toContainText("₹799");
   await navigate(page, "Seller Studio");
   await expect(page.locator(".order-card")).toContainText(

@@ -326,9 +326,12 @@ svg {
   }
 }
 .loading-page {
-  height: 100dvh;
+  min-height: 100dvh;
   display: flex;
-  gap: 25px;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  text-align: center;
   align-items: center;
   justify-content: center;
 }
@@ -851,6 +854,36 @@ svg {
   display: flex;
   align-items: center;
   gap: 20px;
+}
+.chat-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  padding: 12px 28px 0;
+}
+.new-chat-button,
+.chat-history-button {
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 22px;
+  font-size: 12px;
+  color: var(--rose);
+}
+.new-chat-button {
+  display: inline-flex;
+  margin-left: auto;
+  border: 1px solid var(--line);
+  background: #fffafc;
+}
+.new-chat-button:hover,
+.chat-history-button:hover {
+  background: var(--pink);
 }
 .demo-badge {
   background: #fff;
@@ -1914,7 +1947,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 9px;
-  color: #a18b97;
+  color: var(--muted);
   font-size: 11px;
 }
 .onboarding-progress > div > span {
@@ -1939,6 +1972,15 @@ svg {
   background: #ebefe2;
   color: #6d7b50;
   border-color: #dde4ce;
+}
+.onboarding .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.onboarding .field,
+.onboarding .field input,
+.onboarding .field select {
+  min-width: 0;
+  max-width: 100%;
 }
 .onboarding-content {
   max-width: 1030px;
@@ -2609,6 +2651,9 @@ svg {
   .conversation-scroll {
     padding: 29px 22px 20px;
   }
+  .chat-actions {
+    padding: 10px 14px 0;
+  }
   .stylist-intro .eyebrow {
     font-size: 6.6px;
     letter-spacing: 1.05px;
@@ -2982,6 +3027,9 @@ svg {
   }
   .form-grid {
     gap: 14px;
+  }
+  .onboarding .form-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
   .form-grid .field {
     font-size: 11px;

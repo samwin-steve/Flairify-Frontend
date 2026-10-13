@@ -21,7 +21,7 @@ No credentials are needed in demo mode. Start a private demo session, save depar
 
 ## Your photo to a new look
 
-Create an account or sign in, allow Google photo processing, and upload a clear full-body photo. Flairify automatically extracts visible garments for ownership review. Once confirmed, browse Inventory, choose a photographed clothing item, and select **Try this on**. Existing wardrobe photos also work as preview references. The Fitting Room shows your original photo and Google-generated 2D preview, with download, regenerate and delete controls.
+Create an account or sign in, save your shopping preferences, allow Google photo processing, and upload a clear full-body photo. Flairify automatically extracts visible garments for ownership review. Once confirmed, browse Inventory, choose a photographed clothing item, and select **Try this on**. Existing wardrobe photos also work as preview references. The Fitting Room shows the Google-generated 2D preview, with download, regenerate and delete controls; original photos are managed in its Reference photos tab.
 
 Anonymous sample mode does not call paid models. Sample catalogue prices, sizes and stock are simulated; seller listings retain supplied facts. The active image model is Google Gemini on Vertex AI; previews are style visualizations, not exact fit predictions.
 
@@ -53,12 +53,12 @@ Downloaded clothing/editorial images are stored locally in `public/images`; sour
 ## Seller Studio and shopping
 
 - **Seller Studio** is available in the desktop navigation and mobile navigation drawer. Approved sellers add a photo, price, sizes, and stock through **Add clothes**. Owners can approve access requests. Shared inventory edits require a verified owner or seller role; the deployed anonymous demo cannot unlock them.
-- **Inventory → Buy** works without wardrobe onboarding or chat. New users can choose **Browse clothes first** during onboarding. Personal stylist conversations require saved shopping sizes; wardrobe pairing is optional.
+- **Inventory → Buy** works without photos, wardrobe onboarding or chat. New users save shopping preferences as part of account setup, then can choose **Browse clothes first**. Wardrobe pairing is optional.
 - **Buy** on a stylist look uses the same reviewed checkout. Only new products are included in the displayed total; owned pieces are excluded.
 - **My Orders** shows persisted order snapshots after refresh. Checkout requires confirmation of the items, sizes and quantities and states that no payment is required. Sellers see their listed items in **Orders received**. Orders are saved without payment, shipping, stock reservation or stock decrement.
 - Sample listings remain labeled. New seller listings are shown once their backend indexing job succeeds. Adding a listing makes it eligible for matching recommendations; it does not guarantee inclusion in every look.
 
-Local browser verification covers direct checkout before onboarding, a stylist checkout, order persistence, photographed seller listings, stock updates, desktop/mobile overflow, and accessibility scans of the new dialogs. Run the backend with `ENABLE_DEMO_ADMIN=true` and `DEMO_ADMIN_KEY=test-admin-key` for the local seller test. The seller test is skipped when `PLAYWRIGHT_BASE_URL` points at a deployment because public demo administrator access is disabled there; real signed-in seller access is checked separately.
+Local browser verification covers direct checkout after shopping setup without photos, a stylist checkout, order persistence, photographed seller listings, stock updates, desktop/mobile overflow, and accessibility scans of the new dialogs. Run the backend with `ENABLE_DEMO_ADMIN=true` and `DEMO_ADMIN_KEY=test-admin-key` for the local seller test. The seller test is skipped when `PLAYWRIGHT_BASE_URL` points at a deployment because public demo administrator access is disabled there; real signed-in seller access is checked separately.
 
 ## Expanded inventory
 
@@ -107,3 +107,9 @@ The backend's [conversation and retrieval documentation](https://github.com/samw
 The earlier conversation refinement release deployed as `flairify-web-00016-mj7` (source `308df7d`, successful Cloud Build `446fcff7-d836-414f-80fe-9e0601b37f06`). A signed-in deployed browser verified three-turn conversation continuity, exact retained garment IDs when swapping shoes, an explanation without repeated cards, visible incremental text, automatic history restoration, the wardrobe menu, reduced motion, zero tested desktop/mobile Axe violations and no overflow at 393px. The backend [verification log](https://github.com/samwin-steve/Flairify-Backend/blob/main/docs/VERIFICATION.md) documents the initial browser capture issue, resumed verification and measured limits.
 
 Voice release verification (13 October 2026): **25 frontend logic tests and 28 desktop/mobile Playwright journeys passed**, with TypeScript and the production build. Cloud Build `1c4cd67a-4751-4d66-95e1-27cb88c5c3fd` deployed source `0af6615` as `flairify-web-00017-qgf`. A signed-in deployed browser sent three synthesized spoken utterances through the real microphone-processing path to Google, received 290 native-audio chunks, preserved the exact top/trousers when changing shoes and restored the full transcript after refresh. Mute/end, reduced motion, desktop/mobile Axe checks and 393px overflow checks passed; a separate local 320px check passed. The QA account and records were removed. Physical phone microphones and human speech quality remain unmeasured. See [collected voice evidence](https://github.com/samwin-steve/Flairify-Backend/blob/main/docs/live-voice-deployed-results.json).
+
+### Account setup and fresh chats
+
+Shopping preferences are collected immediately after registration or sign-in when the account is incomplete, before the application opens. Restored sessions and legacy profiles missing a required size follow the same flow; the chat is never briefly shown while the profile loads. Department, sizes, store, budget and optional style preferences remain editable in Profile. Returning customers with saved settings go straight into the app. Photos remain optional.
+
+**New chat** stays visible above the conversation on desktop and mobile. It clears the draft, selected look and active reply, starts a separate conversation, and stays fresh after refresh. **Your chats** opens earlier conversations on mobile; the desktop sidebar retains them. Refresh restores only an explicitly selected chat, never an arbitrary previous conversation.

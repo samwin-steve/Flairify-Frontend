@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { api, post, put, del, uploadPhoto } from "@/lib/api";
 import { pollingMilliseconds, CLOTHING_SIZES, SHOE_SIZES } from "@/lib/utils";
+import { shoppingReady } from "@/lib/shopping-session";
 import type {
   Box,
   Config,
@@ -54,6 +55,7 @@ export function ProfileForm({
   profile: Profile;
   onSaved: () => void;
 }) {
+  const qc = useQueryClient();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [styles, setStyles] = useState(profile.styles);
@@ -100,6 +102,7 @@ export function ProfileForm({
         onboarding_complete: profile.onboarding_complete,
       });
       await post("/onboarding/complete");
+      qc.setQueryData(["profile"], await api<Profile>("/profile"));
       onSaved();
     } catch (e) {
       setError((e as Error).message);
@@ -967,14 +970,16 @@ export function Onboarding({
   config,
   onComplete,
   onExit,
+  onSignOut,
 }: {
   profile: Profile;
   config: Config;
   onComplete: () => void;
   onExit: () => void;
+  onSignOut: () => void;
 }) {
   const qc = useQueryClient();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(() => (shoppingReady(profile) ? 1 : 0));
   const [error, setError] = useState("");
   const wardrobe = useQuery({
     queryKey: ["wardrobe"],
@@ -1030,36 +1035,39 @@ export function Onboarding({
     <div className="onboarding">
       <header className="onboarding-header">
         {config.mode === "demo" && <span className="pill">Demo data</span>}
-        <button className="wordmark" onClick={onExit}>
+        <div className="wordmark">
           flairify<span>✧</span>
-        </button>
+        </div>
         <button
           className="button button-ghost"
-          onClick={onExit}
-          aria-label="Browse clothes first"
+          onClick={step === 0 ? onSignOut : onExit}
+          aria-label={step === 0 ? "Sign out" : "Browse clothes first"}
         >
-          Browse clothes first
+          {step === 0 ? "Sign out" : "Browse clothes first"}
         </button>
       </header>
       <div className="onboarding-progress">
-        {["Your style", "Your reference", "Your wardrobe", "Make it yours"].map(
-          (s, i) => (
-            <div
-              className={i === step ? "active" : i < step ? "done" : ""}
-              key={s}
-            >
-              <span>{i < step ? <Check size={13} /> : i + 1}</span>
-              {s}
-            </div>
-          ),
-        )}
+        {[
+          "Shopping preferences",
+          "Your reference",
+          "Your wardrobe",
+          "Make it yours",
+        ].map((s, i) => (
+          <div
+            className={i === step ? "active" : i < step ? "done" : ""}
+            key={s}
+          >
+            <span>{i < step ? <Check size={13} /> : i + 1}</span>
+            {s}
+          </div>
+        ))}
       </div>
       <main className="onboarding-content">
         <div className="eyebrow">A GOOD OUTFIT STARTS WITH YOU</div>
         <h1>
           {
             [
-              "Let’s get to know your style.",
+              "A little about you, before we begin.",
               "A familiar face. Yours.",
               "Your wardrobe, a new perspective.",
               "A few pieces. So many possibilities.",
@@ -1069,7 +1077,7 @@ export function Onboarding({
         <p className="page-subtitle">
           {
             [
-              "Save your shopping preferences once. Photos and wardrobe pairing are optional.",
+              "Finish setting up your account with your sizes, store and budget. You can change these in Profile anytime. Photos are optional.",
               "Clear light, a simple background, and your whole outfit in the frame.",
               "Share a few outfit photos. We’ll help you find pieces that work with what you already wear.",
               "Keep what you own. Correct the details. You’re always the final say.",

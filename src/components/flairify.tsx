@@ -4,6 +4,7 @@ import { StylistComposer } from "./stylist-composer";
 import { VoiceConversation } from "./voice-conversation";
 import { useVoiceStylist } from "@/lib/use-voice-stylist";
 import { streamChat } from "@/lib/chat-stream";
+import { shoppingReady, selectedConversation } from "@/lib/shopping-session";
 import {
   QueryClient,
   QueryClientProvider,
@@ -334,11 +335,10 @@ function Application() {
     if (!conversations.data || historyRestored.current) return;
     historyRestored.current = true;
     const savedId = localStorage.getItem("flairify-conversation");
-    const candidate =
-      savedId === ""
-        ? null
-        : conversations.data.conversations.find((c) => c.id === savedId) ||
-          conversations.data.conversations[0];
+    const candidate = selectedConversation(
+      conversations.data.conversations,
+      savedId,
+    );
     if (candidate) {
       setConvoId(candidate.id);
       setMessages(candidate.messages);
@@ -366,10 +366,13 @@ function Application() {
     }
   }, [toast]);
   const confirmed = wardrobe.data?.items.filter((w) => w.confirmed) || [];
-  const ready =
-    !!profile.data?.onboarding_complete &&
-    !!profile.data?.clothing_size &&
-    !!profile.data?.shoe_size;
+  const ready = shoppingReady(profile.data);
+  const needsSetup = session && !!profile.data && !ready;
+  useEffect(() => {
+    // Covers restored logins and older profiles with missing required sizes.
+    // Render gating below prevents the chat appearing before this effect runs.
+    if (needsSetup) setOnboarding(true);
+  }, [needsSetup]);
   const latestOutfits =
     messages.filter((m) => m.role === "assistant" && m.outfits?.length).at(-1)
       ?.outfits || [];
@@ -381,6 +384,35 @@ function Application() {
     setReferenceTab(false);
     setMobileMenu(false);
     setError("");
+  }
+  function openChat(conversation?: Conversation) {
+    // Detach callbacks before aborting so an old stream/call cannot reopen itself.
+    voiceTarget.current = null;
+    const controller = chatController.current;
+    chatController.current = null;
+    controller?.abort();
+    chatRetry.current = null;
+    historyRestored.current = true;
+    setActiveHistoryReady(true);
+    setBusy(false);
+    setStreamStatus("");
+    setStreamingMessageId(null);
+    setConvoId(conversation?.id || null);
+    localStorage.setItem("flairify-conversation", conversation?.id || "");
+    setMessages(conversation?.messages || []);
+    setInput("");
+    setRefinementLook(null);
+    setActiveLook(null);
+    setDetails(false);
+    changePage("stylist");
+    requestAnimationFrame(() => {
+      document.querySelector(".conversation-scroll")?.scrollTo({ top: 0 });
+      document
+        .querySelector<HTMLTextAreaElement>(
+          '[aria-label="Message your stylist"]',
+        )
+        ?.focus();
+    });
   }
   function manageReferences() {
     changePage("fitting");
@@ -408,6 +440,7 @@ function Application() {
       localStorage.setItem("flairify-token", r.token);
       qc.clear();
       setSession(true);
+      openChat();
       setOnboarding(true);
     });
     setBusy(false);
@@ -424,19 +457,14 @@ function Application() {
         await createUserWithEmailAndPassword(getAuth(), email, password);
       else await signInWithEmailAndPassword(getAuth(), email, password);
       localStorage.removeItem("flairify-token");
-      historyRestored.current = false;
-      setActiveHistoryReady(false);
-      setMessages([]);
-      setConvoId(null);
-      setRefinementLook(null);
-      setActiveLook(null);
+      openChat();
       qc.clear();
       setSession(true);
       setAuthOpen(false);
       qc.invalidateQueries();
       const signedInProfile = await api<Profile>("/profile");
       qc.setQueryData(["profile"], signedInProfile);
-      setOnboarding(!signedInProfile.onboarding_complete);
+      setOnboarding(!shoppingReady(signedInProfile));
     });
     setBusy(false);
   }
@@ -668,20 +696,42 @@ function Application() {
     );
   }
 
-  if (boot)
+  if (boot || (session && profile.isPending))
     return (
       <div className="loading-page">
         <div className="wordmark">
           flairify<span>✧</span>
         </div>
         <LoaderCircle className="spin" />
+        <p role="status">Getting your space ready…</p>
       </div>
     );
-  if (onboarding && profile.data && config.data)
+  if (session && profile.isError)
+    return (
+      <main className="loading-page">
+        <h1>Let’s reconnect.</h1>
+        <p role="alert">We couldn’t load your shopping preferences.</p>
+        <Button onClick={() => profile.refetch()}>Try again</Button>
+        <Button variant="ghost" onClick={logout}>
+          Sign out
+        </Button>
+      </main>
+    );
+  if (session && (needsSetup || onboarding) && !config.data)
+    return (
+      <main className="loading-page">
+        <p role="status">Getting your account setup ready…</p>
+        {config.isError && (
+          <Button onClick={() => config.refetch()}>Try again</Button>
+        )}
+      </main>
+    );
+  if (session && (needsSetup || onboarding) && profile.data && config.data)
     return (
       <Onboarding
         profile={profile.data}
         config={config.data}
+        onSignOut={logout}
         onExit={() => {
           setOnboarding(false);
           setPage("inventory");
@@ -973,16 +1023,8 @@ function Application() {
           <span>YOUR CHATS</span>
           <button
             className="icon-button small"
-            onClick={() => {
-              setConvoId(null);
-              localStorage.setItem("flairify-conversation", "");
-              setRefinementLook(null);
-              setMessages([]);
-              setActiveLook(null);
-              changePage("stylist");
-            }}
-            disabled={busy}
-            aria-label="New conversation"
+            onClick={() => openChat()}
+            aria-label="New chat"
           >
             <Plus size={16} />
           </button>
@@ -993,15 +1035,7 @@ function Application() {
             <button
               className={convoId === c.id ? "selected" : ""}
               key={c.id}
-              disabled={busy}
-              onClick={() => {
-                setConvoId(c.id);
-                localStorage.setItem("flairify-conversation", c.id);
-                setRefinementLook(null);
-                setMessages(c.messages);
-                setActiveLook(null);
-                changePage("stylist");
-              }}
+              onClick={() => openChat(c)}
             >
               <MessageCircle size={15} />
               <span>{c.title}</span>
@@ -1214,6 +1248,17 @@ function Application() {
                 <i />
                 <i />
               </div>
+              <div className="chat-actions">
+                <button
+                  className="chat-history-button mobile-only"
+                  onClick={() => setMobileMenu(true)}
+                >
+                  <MessageCircle size={17} /> Your chats
+                </button>
+                <button className="new-chat-button" onClick={() => openChat()}>
+                  <Plus size={17} /> New chat
+                </button>
+              </div>
               <div className="conversation-scroll">
                 {conversations.isError && (
                   <div className="notice error" role="alert">
@@ -1245,23 +1290,6 @@ function Application() {
                         yours.
                       </p>
                     </div>
-                    {!ready && (
-                      <div className="onboarding-nudge">
-                        <span className="circle-icon">
-                          <Shirt size={23} />
-                        </span>
-                        <div>
-                          <strong>Let’s save your shopping preferences.</strong>
-                          <p>
-                            Set your department and sizes once. Wardrobe pairing
-                            is optional.
-                          </p>
-                        </div>
-                        <Button size="sm" onClick={() => setOnboarding(true)}>
-                          Let’s start <ArrowRight size={16} />
-                        </Button>
-                      </div>
-                    )}
                     <div className="agenda-cards">
                       {prompts.map((p) => (
                         <button

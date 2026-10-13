@@ -15,6 +15,11 @@ test("generated image only, buy every recommended item and restore the order", a
   );
   const auth = await (await request.post("/api/auth/demo")).json();
   const headers = { Authorization: "Bearer " + auth.token };
+  await request.put("/api/profile", {
+    headers,
+    data: { name: "Fitting QA", clothing_size: "M", shoe_size: "39" },
+  });
+  await request.post("/api/onboarding/complete", { headers });
   const catalog = (
     await (await request.get("/api/catalog", { headers })).json()
   ).products;

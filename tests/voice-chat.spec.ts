@@ -69,6 +69,7 @@ test("native microphone, spoken cards, interruption, mute, end and restored tran
   });
   let audioFrames = 0;
   let peer: any;
+  let terminalConversation: any;
   await page.route("**/api/voice/sessions", (r) =>
     r.fulfill({
       json: {
@@ -103,7 +104,16 @@ test("native microphone, spoken cards, interruption, mute, end and restored tran
           }),
         );
         ws.send(Buffer.alloc(48000 * 8)); // Explicit silent PCM fixture, not generated speech.
-      } else if (data.type === "end") ws.close();
+      } else if (data.type === "end") {
+        if (terminalConversation)
+          ws.send(
+            JSON.stringify({
+              type: "turn",
+              conversation: terminalConversation,
+            }),
+          );
+        ws.close();
+      }
     });
   });
   await page.goto("/");
@@ -144,6 +154,7 @@ test("native microphone, spoken cards, interruption, mute, end and restored tran
       },
     ],
   };
+  terminalConversation = updated;
   peer.send(
     JSON.stringify({ type: "outfits", outfits: [recommendation.outfits[0]] }),
   );
@@ -195,6 +206,21 @@ test("native microphone, spoken cards, interruption, mute, end and restored tran
   await expect(
     page.getByText("Ooh, I would try this combination for your office plans."),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Talk to your stylist" }).click();
+  await expect(
+    page.getByRole("region", { name: "Voice conversation" }),
+  ).toBeVisible();
+  await page
+    .locator(".chat-actions")
+    .getByRole("button", { name: "New chat", exact: true })
+    .click();
+  await expect(
+    page.getByRole("region", { name: "Voice conversation" }),
+  ).toHaveCount(0);
+  await expect(page.locator(".message")).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator(".chat-actions")).toBeVisible();
+  await expect(page.locator(".message")).toHaveCount(0);
 });
 
 test("denied microphone keeps text chat usable and makes no paid-session request", async ({
