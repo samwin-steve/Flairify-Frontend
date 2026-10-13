@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { StylistComposer } from "./stylist-composer";
+import { VoiceConversation } from "./voice-conversation";
+import { useVoiceStylist } from "@/lib/use-voice-stylist";
 import { streamChat } from "@/lib/chat-stream";
 import {
   QueryClient,
@@ -180,6 +182,78 @@ function Application() {
   const [addPhotos, setAddPhotos] = useState(false);
   const [filter, setFilter] = useState("all");
   const [messages, setMessages] = useState<Message[]>([]);
+  const voiceTarget = useRef<string | null>(null);
+  const voice = useVoiceStylist({
+    onStart: (id) => {
+      voiceTarget.current = id;
+      setConvoId(id);
+      localStorage.setItem("flairify-conversation", id);
+    },
+    onTranscript: (role, text) => {
+      if (!voiceTarget.current) return;
+      const id = "voice-draft-" + role;
+      setMessages((old) => {
+        const existing = old.find((m) => m.id === id);
+        return existing
+          ? old.map((m) => (m.id === id ? { ...m, content: text } : m))
+          : [
+              ...old,
+              {
+                id,
+                role,
+                content: text,
+                outfits: [],
+                source: "voice",
+                created_at: new Date().toISOString(),
+              },
+            ];
+      });
+    },
+    onOutfits: (outfits) => {
+      if (!voiceTarget.current) return;
+      if (outfits.length) setActiveLook(outfits[0]);
+      setMessages((old) => {
+        const id = "voice-draft-assistant";
+        return old.some((m) => m.id === id)
+          ? old.map((m) => (m.id === id ? { ...m, outfits } : m))
+          : [
+              ...old,
+              {
+                id,
+                role: "assistant",
+                content: "",
+                outfits,
+                source: "voice",
+                created_at: new Date().toISOString(),
+              },
+            ];
+      });
+    },
+    onTurn: (conversation) => {
+      if (voiceTarget.current !== conversation.id) return;
+      setMessages(conversation.messages);
+      setRefinementLook(null);
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      requestAnimationFrame(() =>
+        bottom.current?.scrollIntoView({ behavior: "auto", block: "end" }),
+      );
+    },
+    onEnd: (id) => {
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      void api<{ conversations: Conversation[] }>("/conversations")
+        .then((data) => {
+          if (voiceTarget.current !== id) return;
+          const conversation = data.conversations.find((c) => c.id === id);
+          if (conversation) setMessages(conversation.messages);
+        })
+        .catch(() => {
+          if (voiceTarget.current === id)
+            setError(
+              "Your voice chat ended. Refresh to reload its saved messages.",
+            );
+        });
+    },
+  });
   const bottom = useRef<HTMLDivElement>(null);
   const config = useQuery({
     queryKey: ["config"],
@@ -301,6 +375,8 @@ function Application() {
       ?.outfits || [];
   const summaryLook = activeLook || latestOutfits[0];
   function changePage(id: string) {
+    voiceTarget.current = null;
+    voice.stop();
     setPage(id);
     setReferenceTab(false);
     setMobileMenu(false);
@@ -365,6 +441,8 @@ function Application() {
     setBusy(false);
   }
   async function logout() {
+    voiceTarget.current = null;
+    voice.stop(false);
     if (getApps().length) await signOut(getAuth());
     localStorage.removeItem("flairify-token");
     sessionStorage.removeItem("flairify-sizes");
@@ -386,13 +464,20 @@ function Application() {
     setPage("stylist");
   }
   async function send(text = input) {
-    if (!text.trim() || busy || chatController.current || !activeHistoryReady)
+    if (
+      !text.trim() ||
+      busy ||
+      voice.active ||
+      chatController.current ||
+      !activeHistoryReady
+    )
       return;
     if (!ready) {
       setOnboarding(true);
       return;
     }
     setInput("");
+    voiceTarget.current = null;
     setBusy(true);
     setError("");
     const draft: Message = {
@@ -482,6 +567,30 @@ function Application() {
         }, 80);
       }
     }
+  }
+
+  function startVoice() {
+    if (!ready) {
+      setOnboarding(true);
+      return;
+    }
+    if (profile.data?.demo) {
+      setAuthOpen(true);
+      return;
+    }
+    if (!config.data?.voice) {
+      setError(
+        "Voice is unavailable right now. You can still type to your stylist.",
+      );
+      return;
+    }
+    setError("");
+    void voice.start({
+      conversation_id: convoId,
+      reference_outfit_id: refinementLook?.id || null,
+      include_wardrobe: includeWardrobe,
+      store_id: storeId || null,
+    });
   }
 
   async function saveLook(outfit: Outfit) {
@@ -1210,6 +1319,11 @@ function Application() {
                                 )
                               : m.content}
                           </p>
+                          {m.source === "voice" && (
+                            <span className="voice-message-label">
+                              Voice {m.interrupted ? "· Interrupted" : ""}
+                            </span>
+                          )}
                           {(m.id === streamingMessageId ? [] : m.outfits)?.map(
                             (o, i) => (
                               <LookCard
@@ -1263,7 +1377,7 @@ function Application() {
                 )}
               </div>
               <div className="composer-area">
-                {messages.length > 0 && !busy && (
+                {messages.length > 0 && !busy && !voice.active && (
                   <div className="followup-chips">
                     {[
                       "Why does this work?",
@@ -1277,21 +1391,44 @@ function Application() {
                     ))}
                   </div>
                 )}
-                <StylistComposer
-                  input={input}
-                  onInput={setInput}
-                  onSend={() => send()}
-                  busy={busy || !activeHistoryReady}
-                  ready={ready}
-                  includeWardrobe={includeWardrobe}
-                  onWardrobe={setIncludeWardrobe}
-                  onPhotos={() =>
-                    ready ? setAddPhotos(true) : setOnboarding(true)
-                  }
-                  onSettings={() => changePage("profile")}
-                  focus={refinementLook}
-                  onClearFocus={() => setRefinementLook(null)}
-                />
+                {voice.error && (
+                  <div className="voice-notice" role="alert">
+                    {voice.error}
+                    <button
+                      onClick={voice.clearError}
+                      aria-label="Dismiss voice message"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
+                {voice.active ? (
+                  <VoiceConversation
+                    phase={voice.phase}
+                    muted={voice.muted}
+                    speaking={voice.speaking}
+                    seconds={voice.seconds}
+                    onMute={voice.toggleMute}
+                    onEnd={() => voice.stop()}
+                  />
+                ) : (
+                  <StylistComposer
+                    input={input}
+                    onInput={setInput}
+                    onSend={() => send()}
+                    busy={busy || !activeHistoryReady}
+                    ready={ready}
+                    includeWardrobe={includeWardrobe}
+                    onWardrobe={setIncludeWardrobe}
+                    onPhotos={() =>
+                      ready ? setAddPhotos(true) : setOnboarding(true)
+                    }
+                    onSettings={() => changePage("profile")}
+                    focus={refinementLook}
+                    onClearFocus={() => setRefinementLook(null)}
+                    onTalk={startVoice}
+                  />
+                )}
                 <div className="composer-note">
                   <ShieldCheck size={12} />
                   <span>Your wardrobe stays yours.</span>

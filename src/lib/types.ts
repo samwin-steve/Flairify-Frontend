@@ -95,6 +95,8 @@ export interface Outfit {
   assessment: Assessment;
 }
 export interface Message {
+  source?: "text" | "voice";
+  interrupted?: boolean;
   id: string;
   role: "user" | "assistant";
   content: string;
@@ -172,6 +174,7 @@ export interface Reference {
   source_photo_id?: string;
 }
 export interface Config {
+  voice?: boolean;
   mode: string;
   analysis: string;
   chat: string;

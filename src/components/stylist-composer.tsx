@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ImagePlus,
   LoaderCircle,
+  Mic,
   Shirt,
   ShoppingBag,
   SlidersHorizontal,
@@ -26,6 +27,7 @@ export function StylistComposer({
   onSettings,
   focus,
   onClearFocus,
+  onTalk,
 }: {
   input: string;
   onInput: (text: string) => void;
@@ -38,6 +40,7 @@ export function StylistComposer({
   onSettings: () => void;
   focus: Outfit | null;
   onClearFocus: () => void;
+  onTalk: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const menu = useRef<HTMLDivElement>(null);
@@ -192,6 +195,17 @@ export function StylistComposer({
           title="Shopping preferences"
         >
           <SlidersHorizontal size={18} />
+        </button>
+        <button
+          type="button"
+          className="composer-talk"
+          onClick={onTalk}
+          disabled={busy}
+          aria-label="Talk to your stylist"
+          title="Google AI voice · Transcript saved in this chat"
+        >
+          <Mic size={18} />
+          <span>Talk</span>
         </button>
         <button
           className="composer-send"

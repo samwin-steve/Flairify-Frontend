@@ -15,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-Start the [FastAPI backend](https://github.com/samwin-steve/Flairify-Backend) on port 8000, then open [localhost:3000](http://localhost:3000). The backend URL is configured at runtime and stays out of the browser. Next.js proxies authenticated API and private media requests.
+Start the [FastAPI backend](https://github.com/samwin-steve/Flairify-Backend) on port 8000, then open [localhost:3000](http://localhost:3000). Next.js proxies authenticated HTTP API and private media requests. Optional native voice connects directly to the backend's configured public WSS origin using a short-lived, single-use ticket; Google credentials never enter the browser.
 
 No credentials are needed in demo mode. Start a private demo session, save department, clothing/shoe sizes, store and budget, then start shopping without photos. Optionally add photos or the sample wardrobe, review and confirm garments, and enable “Pair with my wardrobe” in chat. Mumbai recommendations check the combined cost of new pieces against ₹5,000. Sample photos, prices, stock and store locations remain explicitly labeled.
 
@@ -95,6 +95,12 @@ The previous Fitting Room update was deployed as `flairify-web-00015-q2g` (sourc
 ### Conversational stylist
 
 The Stylist restores the last open chat after refresh and exposes all chat history. Use **Refine this look**, or refer to “the second look,” then request a new colour, a variation or a specific replacement. The service preserves retained pieces and checks current size/stock/budget. Discussion questions can receive answers without another set of cards. A rounded composer includes a **Shop new pieces / With my wardrobe** menu, with a moving pink/lilac background and reduced-motion support. The logged-in welcome screen focuses on starting a conversation instead of an editorial advertisement.
+
+### Talk with your stylist
+
+Tap **Talk** and allow microphone access to speak naturally with Google Gemini Live. The stylist answers aloud, streams transcripts and displays real recommendation cards. It uses saved shopping preferences and recent conversation context, including follow-up changes to a selected look. Interrupt, mute or end using the voice controls. A softly animated speaking orb respects reduced-motion settings. Transcripts remain in chat history; Flairify does not store raw or generated voice audio. The microphone stops when the session ends or the page is hidden.
+
+This is native Google audio, not browser text-to-speech. Signed-in accounts require the backend's configured Vertex Live integration; demo/unsupported browsers keep text chat available. The default session limit is five minutes; Talk starts another connection with saved context. Browser capture uses an AudioWorklet and Web Audio, and the backend validates a single-use ticket and exact Origin. See [setup and verification boundaries](https://github.com/samwin-steve/Flairify-Backend/blob/main/docs/VOICE_STYLIST.md).
 
 The backend's [conversation and retrieval documentation](https://github.com/samwin-steve/Flairify-Backend/blob/main/docs/SEMANTIC_RAG.md) and [collected real-service results](https://github.com/samwin-steve/Flairify-Backend/blob/main/docs/live-dialogue-results.json) distinguish working Google integrations from deterministic demo behavior. No new image/video generation is part of this release.
 
