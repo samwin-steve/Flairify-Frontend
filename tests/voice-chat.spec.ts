@@ -248,3 +248,92 @@ test("denied microphone keeps text chat usable and makes no paid-session request
   ).toBeVisible();
   expect(starts).toBe(0);
 });
+
+test("voice waits for auth initialization and checks the server even with stale guest capabilities", async ({
+  page,
+  request,
+  context,
+}) => {
+  await context.grantPermissions(["microphone"]);
+  await voiceProfile(page, request);
+  let release!: () => void;
+  const initialized = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let capabilityRequests = 0;
+  await page.route("**/config", async (route) => {
+    if (new URL(route.request().url()).pathname === "/config") {
+      await initialized;
+      return route.fulfill({ json: { firebase: {} } });
+    }
+    capabilityRequests++;
+    const response = await route.fetch();
+    await route.fulfill({ json: { ...(await response.json()), voice: false } });
+  });
+  let starts = 0;
+  await page.route("**/api/voice/sessions", (route) => {
+    starts++;
+    return route.fulfill({
+      status: 503,
+      json: {
+        detail: "Voice connection temporarily unavailable. Please retry.",
+      },
+    });
+  });
+  const profileLoaded = page.waitForResponse((r) =>
+    r.url().endsWith("/api/profile"),
+  );
+  await page.goto("/");
+  await profileLoaded;
+  await expect(
+    page.getByRole("status").filter({ hasText: "Getting your space ready" }),
+  ).toBeVisible();
+  expect(capabilityRequests).toBe(0);
+  release();
+  await expect(page.locator(".chat-actions")).toBeVisible();
+  await expect.poll(() => capabilityRequests).toBeGreaterThan(0);
+  await page.getByRole("button", { name: "Talk to your stylist" }).click();
+  await expect(page.locator(".voice-notice")).toContainText(
+    "Voice connection temporarily unavailable",
+  );
+  expect(starts).toBe(1);
+  await expect(
+    page.getByRole("region", { name: "Voice conversation" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("textbox", { name: "Message your stylist" }),
+  ).toBeVisible();
+});
+
+test("demo Talk opens account sign-in without starting microphone or paid voice", async ({
+  page,
+  request,
+}) => {
+  const identity = await (await request.post("/api/auth/demo")).json();
+  const headers = { Authorization: "Bearer " + identity.token };
+  await request.put("/api/profile", {
+    headers,
+    data: { name: "Demo", clothing_size: "M", shoe_size: "39" },
+  });
+  await request.post("/api/onboarding/complete", { headers });
+  await page.addInitScript((token) => {
+    localStorage.setItem("flairify-token", token);
+    (window as any).__micCalls = 0;
+    navigator.mediaDevices.getUserMedia = async () => {
+      (window as any).__micCalls++;
+      throw new Error("Demo must not request the microphone");
+    };
+  }, identity.token);
+  let starts = 0;
+  page.on("request", (r) => {
+    if (r.url().endsWith("/api/voice/sessions")) starts++;
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Talk to your stylist" }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(
+    page.getByRole("dialog").getByLabel("Email", { exact: true }),
+  ).toBeVisible();
+  expect(starts).toBe(0);
+  expect(await page.evaluate(() => (window as any).__micCalls)).toBe(0);
+});

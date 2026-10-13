@@ -257,8 +257,10 @@ function Application() {
   });
   const bottom = useRef<HTMLDivElement>(null);
   const config = useQuery({
-    queryKey: ["config"],
-    queryFn: () => api<Config>("/config"),
+    // Guest capabilities must never overwrite restored account capabilities.
+    queryKey: ["config", session ? "account" : "guest"],
+    queryFn: ({ signal }) => api<Config>("/config", { signal }),
+    enabled: !boot,
   });
   useEffect(() => {
     const existing = localStorage.getItem("flairify-token");
@@ -603,16 +605,12 @@ function Application() {
       return;
     }
     if (profile.data?.demo) {
-      setAuthOpen(true);
-      return;
-    }
-    if (!config.data?.voice) {
-      setError(
-        "Voice is unavailable right now. You can still type to your stylist.",
-      );
+      void signInForPreview();
       return;
     }
     setError("");
+    // The authenticated ticket endpoint checks current availability. A pending
+    // or stale capability response must not block a valid signed-in customer.
     void voice.start({
       conversation_id: convoId,
       reference_outfit_id: refinementLook?.id || null,

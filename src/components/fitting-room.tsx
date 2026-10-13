@@ -147,8 +147,8 @@ export function FittingRoom({
         : false,
   });
   const config = useQuery({
-    queryKey: ["config"],
-    queryFn: () => api<Config>("/config"),
+    queryKey: ["config", "account"],
+    queryFn: ({ signal }) => api<Config>("/config", { signal }),
   });
   const photos = useQuery({
     queryKey: ["photos"],
