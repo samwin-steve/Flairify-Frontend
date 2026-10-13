@@ -515,12 +515,15 @@ test("mobile chat uses hamburger navigation and the full remaining viewport", as
   request,
   isMobile,
 }) => {
-  test.skip(!isMobile);
   await voiceProfile(page, request);
   await page.goto("/");
   await expect(
     page.getByRole("navigation", { name: "Mobile navigation" }),
   ).toHaveCount(0);
+  if (!isMobile) {
+    await expect(page.getByRole("button", { name: "Open navigation", exact: true })).toBeHidden();
+    return;
+  }
   await expect(page.locator(".conversation")).toBeVisible();
   const room = await page.locator(".conversation").boundingBox();
   expect(room!.height).toBeGreaterThan((page.viewportSize()?.height || 0) - 90);

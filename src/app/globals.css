@@ -1591,7 +1591,9 @@ svg {
   max-width: 90vw;
 }
 .mobile-only,
-.mobile-details,
+.mobile-details {
+  display: none;
+}
 
 /* Forms and wardrobe */
 .form-stack {
