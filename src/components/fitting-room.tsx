@@ -2,7 +2,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Box,
   Check,
   Clapperboard,
   ImagePlus,
@@ -42,8 +41,7 @@ function ModelViewer() {
     const el = ref.current;
     const loaded = () =>
       setAr(Boolean(el.canActivateAR) && window.isSecureContext);
-    const failed = () =>
-      setError("This device could not load the sample 3D form.");
+    const failed = () => setError("This device could not load the 3D form.");
     el.addEventListener("load", loaded);
     el.addEventListener("error", failed);
     return () => {
@@ -53,20 +51,12 @@ function ModelViewer() {
   }, [ready]);
   return (
     <div className="viewer-panel">
-      <div className="section-line">
-        <span className="pill">Experimental · sample asset</span>
-        <Box size={20} />
-      </div>
-      <h2>A new dimension. Still exploring.</h2>
-      <p>
-        Rotate this sample studio form. Personalized avatar reconstruction and
-        garment fitting are not connected.
-      </p>
+      <h2>3D studio mannequin</h2>
       {ready ? (
         <model-viewer
           ref={ref}
           src="/models/flairify-form.glb"
-          alt="Original sample mannequin, not a reconstruction of the customer"
+          alt="3D studio mannequin"
           camera-controls
           ar
           ar-modes="webxr scene-viewer quick-look"
@@ -94,7 +84,7 @@ function ModelViewer() {
       ) : (
         <p className="fine-print">
           {ar
-            ? "Try AR placement on this device. Availability depends on the browser and installed viewer."
+            ? "Drag to rotate. Pinch or scroll to zoom."
             : "AR is unavailable on this device. Drag to rotate the 3D form; pinch or scroll to zoom."}
         </p>
       )}
@@ -111,13 +101,9 @@ function ModelViewer() {
               )
           }
         >
-          Place sample in your space
+          View in your space
         </Button>
       )}
-      <p className="fine-print">
-        Original Flairify sample asset · CC0. This form does not represent your
-        face, body, or physical fit.
-      </p>
     </div>
   );
 }
@@ -180,17 +166,13 @@ export function FittingRoom({
   }
   return (
     <div className="page-content">
-      <div className="eyebrow">A LITTLE IMAGINATION, MADE PERSONAL</div>
-      <h1>Your fitting room.</h1>
-      <p className="page-subtitle">
-        See a possibility. Keep what feels like you.
-      </p>
+      <h1>Fitting Room</h1>
       <div className="tabs">
         {(
           [
             ["previews", "My previews"],
             ["references", "Reference photos"],
-            ["3d", "3D / AR lab"],
+            ["3d", "3D viewer"],
           ] as const
         ).map(([key, label]) => (
           <button
@@ -222,9 +204,6 @@ export function FittingRoom({
                 garment from Inventory to get started.
               </p>
               <Button onClick={onShop}>Browse inventory</Button>
-              <span className="pill">
-                Google AI · 2D style previews · Not exact fit predictions
-              </span>
             </div>
           )}
           <div className="generation-grid">
@@ -253,7 +232,7 @@ export function FittingRoom({
                     <PrivateVideo id={j.result.media_id} />
                   ) : (
                     <figure className="generated-preview">
-                      <figcaption>Your Google AI preview</figcaption>
+                      <figcaption>Your preview</figcaption>
                       <Media
                         src={"media:" + j.result.media_id}
                         alt="AI-generated style visualization"
@@ -264,9 +243,6 @@ export function FittingRoom({
                 {!j.result?.pieces?.length && j.result?.product_name && (
                   <p>
                     <strong>{j.result.product_name}</strong>
-                    {j.result.sample_product
-                      ? " · Sample catalogue garment"
-                      : ""}
                   </p>
                 )}
                 {!!j.result?.pieces?.length && (
@@ -277,7 +253,6 @@ export function FittingRoom({
                         <li key={piece.kind + piece.id}>
                           {piece.name} ·{" "}
                           {piece.kind === "wardrobe" ? "Owned" : "New"}
-                          {piece.sample ? " · Sample" : ""}
                         </li>
                       ))}
                     </ul>
@@ -298,8 +273,13 @@ export function FittingRoom({
                     {message}
                   </p>
                 ))}
-                {j.result?.label && (
-                  <p className="fine-print">{j.result.label}</p>
+                {j.result?.media_id && (
+                  <p className="fine-print">
+                    {j.kind === "video"
+                      ? "AI-generated video"
+                      : "AI-generated preview"}
+                    {" · Appearance and fit may vary."}
+                  </p>
                 )}
                 {j.kind === "try_on" &&
                   j.status === "succeeded" &&
@@ -390,13 +370,6 @@ export function FittingRoom({
                 </p>
               </article>
             ))}
-          </div>
-          <div className="notice">
-            <p>
-              Review face likeness, garment details, and proportions before
-              accepting. Videos show simple generated motion, not interactive
-              AR. No sample video is presented as a new generation.
-            </p>
           </div>
         </>
       )}

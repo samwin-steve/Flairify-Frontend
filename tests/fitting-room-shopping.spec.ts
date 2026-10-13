@@ -44,7 +44,7 @@ from app.services import media
 uid,products=json.loads(sys.argv[1])
 image=media.save(uid,Path('../frontend/public/images/hero.jpg').read_bytes(),'image/jpeg')
 store().put('outfits',uid,'fitting-test-look',{'id':'fitting-test-look','products':products,'owned':[{'id':'owned-test-shirt'}]})
-job=GenerationJob(id='fitting-test-preview',kind='try_on',status='succeeded',stage='Preview test fixture',payload={'outfit_id':'fitting-test-look'},result={'media_id':image,'reference_media_id':'source-must-not-load','label':'Test media fixture — no AI generation', 'pieces':[{'kind':'product','id':products[0]['id'],'name':products[0]['name'],'category':products[0]['category'],'image':products[0]['image'],'sample':True}]}).model_dump(mode='json')
+job=GenerationJob(id='fitting-test-preview',kind='try_on',status='succeeded',stage='Preview test fixture',payload={'outfit_id':'fitting-test-look'},result={'media_id':image,'reference_media_id':'source-must-not-load','label':'AI-generated 2D style preview · Sample catalogue garments · Not an exact fit prediction', 'pieces':[{'kind':'product','id':products[0]['id'],'name':products[0]['name'],'category':products[0]['category'],'image':products[0]['image'],'sample':True}]}).model_dump(mode='json')
 store().put('jobs',uid,job['id'],job)
 `,
       JSON.stringify([auth.user_id, products]),
@@ -70,6 +70,7 @@ store().put('jobs',uid,job['id'],job)
   });
   await page.goto("/");
   const navigate = async (name: string) => {
+    await expect(page.locator(".app-shell")).toBeVisible();
     const visible = page
       .getByRole("button", { name, exact: true })
       .filter({ visible: true });
@@ -92,6 +93,10 @@ store().put('jobs',uid,job['id'],job)
     card.getByText("Your uploaded photo", { exact: true }),
   ).toHaveCount(0);
   await expect(card.getByAltText("Original reference photo")).toHaveCount(0);
+  await expect(
+    card.getByText("AI-generated preview · Appearance and fit may vary."),
+  ).toBeVisible();
+  expect(await card.innerText()).not.toMatch(/\b(?:demo|sample|mock)\b/i);
   await expect(card.locator(".preview-shopping-items li")).toHaveCount(3);
   await expect(
     card.getByRole("button", { name: "Buy", exact: true }),
@@ -121,7 +126,7 @@ store().put('jobs',uid,job['id'],job)
     .getByRole("dialog")
     .getByRole("button", { name: "Buy", exact: true })
     .click();
-  await expect(page.getByRole("heading", { name: "My orders." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "My orders" })).toBeVisible();
   await expect(page.locator(".order-line")).toHaveCount(3);
   await expect(page.locator(".order-card")).toContainText(
     "From the Fitting Room",

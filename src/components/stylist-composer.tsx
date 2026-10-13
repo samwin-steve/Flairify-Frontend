@@ -202,7 +202,7 @@ export function StylistComposer({
           onClick={onTalk}
           disabled={busy}
           aria-label="Talk to your stylist"
-          title="Google AI voice · Transcript saved in this chat"
+          title="Talk to your stylist · Transcript saved"
         >
           <Mic size={18} />
           <span>Talk</span>

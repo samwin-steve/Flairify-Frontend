@@ -528,9 +528,7 @@ export function PersonSelection({
         method: "PATCH",
         body: JSON.stringify({ person_box: box, group_photo: group }),
       });
-      setError(
-        "Selection saved. Google AI will find visible garments when enabled.",
-      );
+      setError("Selection saved.");
       onSaved();
     } catch (e) {
       setError((e as Error).message);
@@ -665,7 +663,7 @@ export function GarmentEditor({
             />
             <figcaption>
               {item.evidence === "original_crop"
-                ? "Original photo crop · Evidence"
+                ? "Original photo crop"
                 : "Garment reference"}
             </figcaption>
           </figure>
@@ -778,7 +776,10 @@ export function GarmentEditor({
       </div>
       {item.uncertainty.map((t, i) => (
         <p key={i} className="fine-print">
-          {t}
+          {item.evidence === "sample" &&
+          t === "Sample garment, not inferred from your photos"
+            ? "Confirm that you own this piece."
+            : t}
         </p>
       ))}
       {error && (
@@ -873,7 +874,6 @@ export function WardrobeReview({
               aria-label={"Edit " + item.name}
             >
               <Media src={item.generated_image || item.image} alt={item.name} />
-              {item.sample && <span className="image-badge">Sample</span>}
               {item.generated_image && (
                 <span className="image-badge">AI-generated</span>
               )}
@@ -1034,7 +1034,6 @@ export function Onboarding({
   return (
     <div className="onboarding">
       <header className="onboarding-header">
-        {config.mode === "demo" && <span className="pill">Demo data</span>}
         <div className="wordmark">
           flairify<span>✧</span>
         </div>
@@ -1219,7 +1218,7 @@ export function Onboarding({
                       setStep(3);
                     }}
                   >
-                    Explore with a sample wardrobe
+                    Choose starter pieces
                   </Button>
                 )}
               </div>
@@ -1252,11 +1251,7 @@ export function Onboarding({
               ))}
             {config.analysis === "manual" && (
               <div className="notice">
-                <p>
-                  Automatic photo analysis is not connected in demo mode.
-                  Uploaded photos need your descriptions; the sample wardrobe
-                  uses labeled fixtures.
-                </p>
+                <p>Add garment details and confirm the pieces you own.</p>
               </div>
             )}
             <WardrobeReview

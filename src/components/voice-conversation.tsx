@@ -40,8 +40,8 @@ export function VoiceConversation({
             : "Just talk. You can interrupt me anytime."}
         </span>
         <small>
-          Google AI voice · Transcript saved in this chat ·{" "}
-          {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}
+          Transcript saved · {Math.floor(seconds / 60)}:
+          {String(seconds % 60).padStart(2, "0")}
         </small>
       </div>
       <div className="voice-controls">

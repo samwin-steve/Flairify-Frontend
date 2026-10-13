@@ -5,7 +5,7 @@ test("saved shopping preferences, optional wardrobe, relevant distinct occasion 
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Explore sample demo" }).click();
+  await page.getByRole("button", { name: "Browse as guest" }).click();
   await page.getByLabel("What should we call you?").fill("Occasion QA");
   await page.getByLabel("Shopping department").selectOption("women");
   await page.getByLabel("Clothing size", { exact: true }).selectOption("L");

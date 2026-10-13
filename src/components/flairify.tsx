@@ -32,7 +32,6 @@ import {
   Compass,
   Heart,
   ImagePlus,
-  Leaf,
   LoaderCircle,
   LogOut,
   MapPin,
@@ -476,7 +475,7 @@ function Application() {
     await action(async () => {
       if (!firebaseReady)
         throw new Error(
-          "Account sign-in is not configured for this demo. Explore using a private demo session.",
+          "Sign-in is unavailable right now. You can browse as a guest.",
         );
       if (google) await signInWithPopup(getAuth(), new GoogleAuthProvider());
       else if (register)
@@ -654,9 +653,7 @@ function Application() {
   async function requestTryOn(selected: PreviewSelection[], outfitId?: string) {
     if (!selected.length) throw new Error("Select at least one garment first.");
     if (profile.data?.demo)
-      throw new Error(
-        "Sign in to use your own photo for Google AI previews. The sample demo does not generate personal images.",
-      );
+      throw new Error("Sign in to create a preview with your photo.");
     if (!profile.data?.consent.ai_photo_processing)
       throw new Error(
         "Allow Google AI photo processing in Profile before generating your preview.",
@@ -778,9 +775,6 @@ function Application() {
             flairify<span>✧</span>
           </div>
           <nav>
-            {config.data?.mode === "demo" && (
-              <span className="pill">Demo data</span>
-            )}
             <a href="#how-it-works">A wardrobe with possibilities</a>
             <Button variant="ghost" onClick={() => setAuthOpen(true)}>
               Sign in <ArrowRight size={15} />
@@ -823,7 +817,7 @@ function Application() {
                     onClick={startDemo}
                     disabled={busy}
                   >
-                    Explore sample demo
+                    Browse as guest
                   </button>
                 )}
               </div>
@@ -862,10 +856,7 @@ function Application() {
                 </h2>
               </div>
               <div className="floating-look">
-                <img
-                  src="/images/blazer.jpg"
-                  alt="Sample beige blazer inspiration"
-                />
+                <img src="/images/blazer.jpg" alt="Beige blazer" />
                 <div>
                   <span>ONE THOUGHTFUL ADDITION</span>
                   <strong>
@@ -913,11 +904,6 @@ function Application() {
         </main>
         <footer className="landing-footer">
           <span>flairify · Buy thoughtfully. Wear happily.</span>
-          <span>
-            {config.data?.mode === "demo"
-              ? "Demo data · Sample wardrobe, prices & stores"
-              : "Wardrobe-first retail shopping"}
-          </span>
           <a href="/image-credits.json" target="_blank">
             Photo credits
           </a>
@@ -927,7 +913,6 @@ function Application() {
             open
             onOpenChange={setAuthOpen}
             title={register ? "A little more you." : "Welcome back."}
-            description="Flairify sign-in does not authorize access to Google Photos."
           >
             <form
               className="form-stack"
@@ -977,11 +962,10 @@ function Application() {
               {!firebaseReady && (
                 <div className="notice">
                   <p>
-                    Account sign-in is not connected in this demo. A private
-                    demo session lets you explore without credentials.
+                    Sign-in is unavailable right now. You can browse as a guest.
                   </p>
                   <Button type="button" onClick={startDemo}>
-                    Explore demo
+                    Browse as guest
                   </Button>
                 </div>
               )}
@@ -1001,7 +985,6 @@ function Application() {
         <button className="wordmark" onClick={() => changePage("stylist")}>
           flairify<span>✧</span>
         </button>
-        <p>A LITTLE MORE YOU.</p>
       </div>
       <nav className="primary-nav" aria-label="Main navigation">
         {navigation.map((n) => (
@@ -1027,13 +1010,7 @@ function Application() {
           <strong>Your wardrobe</strong>
           <span className="status-dot" />
         </div>
-        <p>
-          {confirmed.length} confirmed pieces.
-          <br />
-          {ready
-            ? "Ready for a new possibility."
-            : "A little start goes a long way."}
-        </p>
+        <p>{confirmed.length} confirmed pieces</p>
         <button
           onClick={() => (ready ? changePage("wardrobe") : setOnboarding(true))}
         >
@@ -1077,14 +1054,6 @@ function Application() {
         )}
       </div>
       <div className="sidebar-bottom">
-        <div className="planet-note">
-          <Leaf size={17} />
-          <span>
-            Love your wardrobe.
-            <br />
-            Make the most of it.
-          </span>
-        </div>
         <button
           className="account-button"
           onClick={() => changePage("profile")}
@@ -1092,7 +1061,7 @@ function Application() {
           <span className="avatar">{profile.data?.name?.[0] || "Y"}</span>
           <div>
             <strong>{profile.data?.name || "Your space"}</strong>
-            <small>Your personal style space</small>
+            <small>Profile & settings</small>
           </div>
           <Settings2 size={17} />
         </button>
@@ -1103,7 +1072,6 @@ function Application() {
     <>
       <div className="details-heading">
         <h3>Your outfit notebook</h3>
-        <span>THE PIECES THAT MAKE IT YOU</span>
       </div>
       <div className="section-line">
         <strong>From your wardrobe</strong>
@@ -1124,7 +1092,7 @@ function Application() {
       {!confirmed.length && (
         <div className="mini-empty">
           <Shirt size={28} />
-          <p>Your favourites belong here.</p>
+          <p>No wardrobe pieces yet.</p>
           <Button
             variant="outline"
             size="sm"
@@ -1137,7 +1105,7 @@ function Application() {
       {summaryLook && (
         <>
           <div className="section-line details-section">
-            <strong>A thoughtful addition</strong>
+            <strong>Selected pieces</strong>
             <span className="pill rose">New</span>
           </div>
           {summaryLook.products.map((p) => (
@@ -1155,14 +1123,13 @@ function Application() {
           <div className="budget-note">
             <span>Total for new pieces</span>
             <strong>{money(summaryLook.total)}</strong>
-            <small>Owned pieces add ₹0. No need to buy the whole look.</small>
           </div>
         </>
       )}
       <div className="store-note">
         <MapPin size={18} />
         <div>
-          <strong>Your store, your choice</strong>
+          <strong>Your store</strong>
           <p>
             {stores.data?.stores.find(
               (s) => s.id === (storeId || profile.data?.preferred_store_id),
@@ -1175,7 +1142,7 @@ function Application() {
             Find stores near me
           </button>
           {stores.data?.stores
-            .filter((s) => s.distance_km !== undefined)
+            .filter((s) => !s.sample && s.distance_km !== undefined)
             .map((s) => (
               <p className="fine-print" key={s.id}>
                 {s.name}: {s.distance_km} km
@@ -1184,14 +1151,6 @@ function Application() {
               </p>
             ))}
         </div>
-      </div>
-      <div className="gentle-note">
-        <Heart size={19} />
-        <p>
-          Something you’ll wear again
-          <br />
-          is always a good place to start.
-        </p>
       </div>
     </>
   );
@@ -1211,16 +1170,8 @@ function Application() {
             <span>
               {navigation.find((n) => n.id === page)?.label || "Seller Studio"}
             </span>
-            <span className="header-separator" />
-            <small>Good style. Better possibilities.</small>
           </div>
           <div className="header-actions">
-            {config.data?.mode === "demo" && (
-              <span className="demo-badge">
-                <span />
-                Demo data
-              </span>
-            )}
             <button
               className="icon-button mobile-details"
               onClick={() => setDetails(true)}
@@ -1341,14 +1292,7 @@ function Application() {
                         )}
                         <div className="message-body">
                           {m.role === "assistant" && (
-                            <span className="assistant-label">
-                              Flairify{" "}
-                              <small>
-                                {config.data?.chat === "rules"
-                                  ? "Rule-based demo"
-                                  : "Your stylist"}
-                              </small>
-                            </span>
+                            <span className="assistant-label">Flairify</span>
                           )}
                           <p
                             className={
@@ -1516,15 +1460,6 @@ function Application() {
                     onTalk={startVoice}
                   />
                 )}
-                <div className="composer-note">
-                  <ShieldCheck size={12} />
-                  <span>Your wardrobe stays yours.</span>
-                  <span className="composer-note-right">
-                    {config.data?.mode === "demo"
-                      ? "Sample catalogue · No live retailer connected"
-                      : "Prices and sizes checked against retailer records"}
-                  </span>
-                </div>
               </div>
             </main>
             <aside className="outfit-details">{detailsPanel}</aside>
@@ -1533,16 +1468,13 @@ function Application() {
         {page === "wardrobe" && (
           <main className="page-content">
             <div className="section-line">
-              <span className="eyebrow">THE PIECES THAT MAKE IT YOU</span>
               <Button onClick={() => setAddPhotos(true)} size="sm">
                 <Plus size={16} />
                 Add photos
               </Button>
             </div>
-            <h1>Your wardrobe, reimagined.</h1>
-            <p className="page-subtitle">
-              {confirmed.length} confirmed pieces. A whole lot of possibility.
-            </p>
+            <h1>My wardrobe</h1>
+            <p className="page-subtitle">{confirmed.length} confirmed pieces</p>
             <div className="tabs">
               {["all", "top", "bottom", "jacket", "shoes", "dress", "bag"].map(
                 (c) => (
@@ -1587,15 +1519,11 @@ function Application() {
         )}
         {page === "saved" && (
           <main className="page-content">
-            <span className="eyebrow">GOOD IDEAS, KEPT CLOSE</span>
-            <h1>Looks worth coming back to.</h1>
-            <p className="page-subtitle">
-              A little inspiration for another day.
-            </p>
+            <h1>Saved looks</h1>
             {!saved.data?.looks.length ? (
               <div className="empty-state">
                 <Bookmark size={32} />
-                <h2>Your favourites will feel at home here.</h2>
+                <h2>No saved looks yet</h2>
                 <p>
                   Save a stylist recommendation to keep the whole combination.
                 </p>
@@ -1666,8 +1594,7 @@ function Application() {
         )}
         {page === "profile" && profile.data && (
           <main className="page-content">
-            <span className="eyebrow">ALWAYS YOUR SAY</span>
-            <h1>Your space, your preferences.</h1>
+            <h1>Profile & preferences</h1>
             <div className="profile-columns">
               <div className="white-panel">
                 <ProfileForm
@@ -1680,11 +1607,7 @@ function Application() {
               </div>
               <div>
                 <div className="white-panel">
-                  <h3>Private by design.</h3>
-                  <p>
-                    Google sign-in and Google Photos permissions are separate.
-                    You choose what to share.
-                  </p>
+                  <h3>Your photos</h3>
                   <Button variant="outline" onClick={manageReferences}>
                     Manage reference photos
                   </Button>
@@ -1694,37 +1617,6 @@ function Application() {
                   >
                     Manage wardrobe and photos
                   </Button>
-                </div>
-                <div className="white-panel integration-status">
-                  <h3>What’s connected</h3>
-                  <p>
-                    <span>Catalogue</span>
-                    <strong>
-                      {config.data?.mode === "demo"
-                        ? "Sample data"
-                        : "Retailer records"}
-                    </strong>
-                  </p>
-                  <p>
-                    <span>Photo analysis</span>
-                    <strong>
-                      {config.data?.analysis === "manual"
-                        ? "Manual review"
-                        : "Gemini"}
-                    </strong>
-                  </p>
-                  <p>
-                    <span>Try-on / video</span>
-                    <strong>
-                      {config.data?.try_on
-                        ? "Configured; access required"
-                        : "Not connected"}
-                    </strong>
-                  </p>
-                  <p>
-                    <span>Personalized 3D</span>
-                    <strong>Experimental</strong>
-                  </p>
                 </div>
                 <Button variant="ghost" onClick={() => changePage("admin")}>
                   <StoreIcon size={17} />
@@ -1806,7 +1698,6 @@ function Application() {
           open
           onOpenChange={setMobileMenu}
           title="Your Flairify"
-          description="Your personal style space."
         >
           <div className="mobile-sidebar">{nav}</div>
         </Modal>
@@ -1985,9 +1876,7 @@ function LookCard({
           <div className="look-piece" key={p.id}>
             <div className="look-image">
               <Media src={p.image} alt={p.name} catalog />
-              <span className="piece-label">
-                New {p.sample ? "· Sample" : ""}
-              </span>
+              <span className="piece-label">New</span>
             </div>
             <strong>{p.name}</strong>
             {checkbox(productPiece(p))}
@@ -2022,7 +1911,7 @@ function LookCard({
             <div className="button-row">
               {onSignIn ? (
                 <Button size="sm" onClick={onSignIn}>
-                  Sign in for real previews
+                  Sign in to try on
                 </Button>
               ) : (
                 <>
@@ -2064,17 +1953,8 @@ function LookCard({
                   for this occasion.
                 </p>
               ))}
-            <small>
-              Based on your current confirmed wardrobe · BigQuery Graph
-            </small>
           </div>
         )}
-      {!outfit.complete && (
-        <p className="small-note">
-          Focused selection for your request. You don’t need to buy a whole
-          outfit.
-        </p>
-      )}
       {onRefine && (
         <button className="refine-look" onClick={onRefine}>
           <Sparkles size={15} />
@@ -2127,19 +2007,14 @@ function LookCard({
             <p>
               {p.store?.name} · Size {p.availability?.size} ·{" "}
               {p.availability?.quantity} available
-              {p.sample ? " (sample stock)" : ""}
             </p>
-            {p.availability?.aisle && (
+            {!p.sample && p.availability?.aisle && (
               <p>
                 Aisle {p.availability.aisle}
                 {p.availability.rack ? " · Rack " + p.availability.rack : ""}
               </p>
             )}
-            <p>
-              {p.delivery.length
-                ? p.delivery.join(" · ")
-                : "Delivery details not supplied by retailer."}
-            </p>
+            {!!p.delivery.length && <p>{p.delivery.join(" · ")}</p>}
           </div>
         ))}
       </details>

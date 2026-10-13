@@ -769,18 +769,6 @@ svg {
 .sidebar-bottom {
   margin-top: auto;
 }
-.planet-note {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  font-size: 10px;
-  color: var(--muted);
-  padding: 16px 9px 22px;
-  line-height: 1.7;
-}
-.planet-note svg {
-  color: #8a9279;
-}
 .account-button {
   border-top: 1px solid var(--line);
   padding: 19px 0;
@@ -884,23 +872,6 @@ svg {
 .new-chat-button:hover,
 .chat-history-button:hover {
   background: var(--pink);
-}
-.demo-badge {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  font-size: 9px;
-  padding: 4px 9px;
-  color: var(--muted);
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.demo-badge > span {
-  width: 4px;
-  height: 4px;
-  background: #b78e68;
-  border-radius: 50%;
 }
 .stylist-layout {
   display: grid;
@@ -1128,17 +1099,6 @@ svg {
 .send-button:hover {
   background: var(--rose-dark);
 }
-.composer-note {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  margin: 10px 2px 0;
-  font-size: 8px;
-  color: #8c7480;
-}
-.composer-note-right {
-  margin-left: auto;
-}
 .outfit-details {
   border-left: 1px solid var(--line);
   padding: 29px 22px 22px;
@@ -1285,21 +1245,6 @@ svg {
 .store-note .text-link {
   display: block;
   font-size: 9px;
-}
-.gentle-note {
-  display: flex;
-  gap: 11px;
-  align-items: center;
-  padding: 12px 2px;
-  color: #b68b9f;
-}
-.gentle-note p {
-  font-family: var(--serif);
-  font-size: 15px;
-  line-height: 1.5;
-  margin: 0;
-  font-style: italic;
-  color: #947582;
 }
 .messages {
   display: flex;
@@ -1675,20 +1620,6 @@ svg {
 .profile-columns .white-panel > p {
   font-size: 12px;
   line-height: 1.8;
-}
-.integration-status p {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 11px;
-  border-bottom: 1px solid var(--line);
-  padding: 10px 0;
-}
-.integration-status strong {
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--rose);
-  text-align: right;
 }
 .photo-management {
   margin-top: 40px;
@@ -2599,10 +2530,6 @@ svg {
     width: 29px;
     font-size: 16px;
   }
-  .demo-badge {
-    font-size: 8px;
-    padding: 4px 7px;
-  }
   .mobile-only {
     display: inline-flex;
   }
@@ -2724,19 +2651,6 @@ svg {
   }
   .composer textarea::placeholder {
     font-size: 10px;
-  }
-  .composer-note {
-    font-size: 7px;
-    gap: 4px;
-    margin-top: 8px;
-  }
-  .composer-note-right {
-    font-size: 6.5px;
-    max-width: 53%;
-    text-align: right;
-  }
-  .composer-note svg {
-    width: 10px;
   }
   .composer > .icon-button {
     width: 30px;
@@ -3133,9 +3047,6 @@ svg {
   .garment-image > img {
     height: 155px;
   }
-  .composer-note-right {
-    display: none;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   html {
@@ -3352,8 +3263,7 @@ svg {
 /* Keep small interface labels readable on their pale backgrounds. */
 .sidebar-top > p,
 .history > .section-line > span,
-.details-heading > span,
-.gentle-note > p {
+.details-heading > span {
   color: #74636d;
 }
 .budget-note > strong {
@@ -4325,9 +4235,6 @@ svg {
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
-  }
-  .refined-chat .composer-note {
-    font-size: 9px;
   }
   .stylist-aura i {
     filter: blur(55px);

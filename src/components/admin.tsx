@@ -157,12 +157,7 @@ export function Admin({
         </p>
         <div className="white-panel seller-access">
           <LockKeyhole size={32} />
-          <h2>A space for your collection.</h2>
-          <p>
-            Add product photos, sizes, prices and store stock. Once indexed,
-            your listings appear in Inventory and can be considered by the
-            stylist. Review saved orders here too.
-          </p>
+          <h2>Manage your collection</h2>
           {profile.demo ? (
             <p>
               Sign in with Google or email, then request seller access. The
@@ -198,11 +193,8 @@ export function Admin({
           )}
           {profile.demo && demoAdmin && (
             <div className="form-stack">
-              <p className="fine-print">
-                Local demo only: edit your isolated sample catalogue.
-              </p>
               <label className="field">
-                Demo administrator key
+                Administrator key
                 <input
                   type="password"
                   value={key}
@@ -231,19 +223,7 @@ export function Admin({
       <span className="eyebrow">
         {profile.admin ? "OWNER" : "SELLER"} WORKSPACE
       </span>
-      <h1>Your collection, considered.</h1>
-      <p className="page-subtitle">
-        Add clothes. Keep availability current. Help someone find their next
-        favourite.
-      </p>
-      <div className="notice">
-        <p>
-          Review and manage orders for your collection.
-          {profile.demo
-            ? " You are editing only your private demo catalogue."
-            : " New listings are indexed automatically for Inventory and stylist recommendations."}
-        </p>
-      </div>
+      <h1>Manage your collection</h1>
       {error && (
         <p className="notice error" role="alert">
           {error}
@@ -326,7 +306,7 @@ export function Admin({
                 {p.variants
                   .flatMap((v) => v.stock)
                   .reduce((n, s) => n + s.quantity, 0)}{" "}
-                units{p.sample ? " · Sample item" : ""}
+                units
               </p>
               <Button
                 variant="outline"
@@ -357,7 +337,7 @@ export function Admin({
           >
             <StoreIcon size={20} />
             <h3>{s.name}</h3>
-            <p>{s.address}</p>
+            {!s.sample && <p>{s.address}</p>}
             <small>Edit store</small>
           </button>
         ))}
@@ -875,9 +855,6 @@ function ProductEditor({
             />
             Active listing (uncheck to archive)
           </label>
-          {p.sample && (
-            <p className="fine-print">This listing is marked as sample data.</p>
-          )}
         </fieldset>
         {error && (
           <p role="alert" className="error">
@@ -922,7 +899,7 @@ function StoreEditor({
       open
       onOpenChange={(v) => !v && !busy && onClose()}
       title="Store or seller location"
-      description="Use a real supplied address. Location coordinates are optional."
+      description="Enter the store address. Coordinates are optional."
     >
       <form
         className="form-stack"

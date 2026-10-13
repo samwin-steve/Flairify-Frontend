@@ -129,10 +129,6 @@ export function Checkout({
       description="Confirm your sizes, colours and store before placing your order."
       wide
     >
-      <div className="notice">
-        <ShoppingBag size={20} />
-        <p>Your order will be saved to My Orders. No payment is required.</p>
-      </div>
       {(outfitId || previewJobId) && (
         <p className="small-note">
           Only new pieces from this look are included. Clothes you already own
@@ -166,7 +162,6 @@ export function Checkout({
                   <h3>{p.name}</h3>
                   <strong>{money(p.price)}</strong>
                 </div>
-                {p.sample && <span className="pill">Sample item</span>}
                 <div className="form-grid">
                   <label className="field">
                     Size and colour
@@ -355,16 +350,12 @@ export function OrderList({
                   {line.size} · {line.colour} · Qty {line.quantity}
                   <br />
                   {line.store_name}
-                  {line.sample ? " · Sample item" : ""}
                 </p>
               </div>
               <span>{money(line.line_total)}</span>
             </div>
           ))}
-          <p className="fine-print">
-            {seller ? "Your listed items only. " : ""}Prices shown were saved
-            when the order was placed.
-          </p>
+          {seller && <p className="fine-print">Your listed items only.</p>}
         </article>
       ))}
     </div>
@@ -378,9 +369,7 @@ export function Orders({ onShop }: { onShop: () => void }) {
   });
   return (
     <main className="page-content">
-      <span className="eyebrow">A LITTLE SHOPPING NOTEBOOK</span>
-      <h1>My orders.</h1>
-      <p className="page-subtitle">Your purchases, saved in one place.</p>
+      <h1>My orders</h1>
       {orders.isLoading && <p role="status">Loading your orders…</p>}
       {orders.error && (
         <p className="error" role="alert">
@@ -390,8 +379,7 @@ export function Orders({ onShop }: { onShop: () => void }) {
       {!orders.isLoading && !orders.error && !orders.data?.orders.length && (
         <div className="empty-state">
           <ShoppingBag size={32} />
-          <h2>Your next favourite is waiting.</h2>
-          <p>Browse and buy directly. No stylist conversation needed.</p>
+          <h2>No orders yet</h2>
           <Button onClick={onShop}>Explore inventory</Button>
         </div>
       )}

@@ -353,16 +353,14 @@ test("voice selects pieces, opens Fitting Room without cutting speech, and recon
   ).json();
   const conversation = recommendation.conversation;
   const outfit = recommendation.outfits[0];
-  const pieces = outfit.products
-    .slice(0, 2)
-    .map((p: any) => ({
-      kind: "product",
-      id: p.id,
-      name: p.name,
-      category: p.category,
-      variant_id: p.availability.variant_id,
-      available: true,
-    }));
+  const pieces = outfit.products.slice(0, 2).map((p: any) => ({
+    kind: "product",
+    id: p.id,
+    name: p.name,
+    category: p.category,
+    variant_id: p.availability.variant_id,
+    available: true,
+  }));
   let peer: any;
   let ticketCalls = 0;
   let firstId: string | null = null;
@@ -487,7 +485,7 @@ test("voice selects pieces, opens Fitting Room without cutting speech, and recon
       label: "Transport fixture, not a generated image",
     },
   };
-  await expect(page.getByText("Your Google AI preview")).toBeVisible();
+  await expect(page.getByText("Your preview")).toBeVisible();
   await expect(
     page
       .getByRole("region", { name: "Shop this look" })
@@ -521,7 +519,9 @@ test("mobile chat uses hamburger navigation and the full remaining viewport", as
     page.getByRole("navigation", { name: "Mobile navigation" }),
   ).toHaveCount(0);
   if (!isMobile) {
-    await expect(page.getByRole("button", { name: "Open navigation", exact: true })).toBeHidden();
+    await expect(
+      page.getByRole("button", { name: "Open navigation", exact: true }),
+    ).toBeHidden();
     return;
   }
   await expect(page.locator(".conversation")).toBeVisible();
@@ -535,6 +535,6 @@ test("mobile chat uses hamburger navigation and the full remaining viewport", as
     .getByRole("button", { name: "Inventory", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: /Find your next/ }),
+    page.getByRole("heading", { name: "Shop clothes" }),
   ).toBeVisible();
 });

@@ -191,7 +191,7 @@ test("direct multi-piece preview, conflict resolution, refresh and editable back
   });
   await button.click();
   await expect(
-    page.getByRole("heading", { name: "Your fitting room." }),
+    page.getByRole("heading", { name: "Fitting Room" }),
   ).toBeVisible();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(calls).toHaveLength(1);

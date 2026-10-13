@@ -3,14 +3,14 @@ import AxeBuilder from "@axe-core/playwright";
 
 async function start(page: import("@playwright/test").Page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Explore sample demo" }).click();
+  await page.getByRole("button", { name: "Browse as guest" }).click();
   await page.getByLabel("What should we call you?").fill("Commerce QA");
   await page.getByLabel("Clothing size", { exact: true }).selectOption("M");
   await page.getByLabel("Shoe size (EU)").selectOption("39");
   await page.getByRole("button", { name: "Save and continue" }).click();
   await page.getByRole("button", { name: "Browse clothes first" }).click();
   await expect(
-    page.getByRole("heading", { name: "Find your next favourite." }),
+    page.getByRole("heading", { name: "Shop clothes" }),
   ).toBeVisible();
 }
 async function navigate(page: import("@playwright/test").Page, name: string) {
@@ -32,6 +32,9 @@ test("direct mock purchase without wardrobe saves order and no payment", async (
   page,
 }) => {
   await start(page);
+  expect(await page.locator("body").innerText()).not.toMatch(
+    /\b(?:demo|sample|mock)\b/i,
+  );
   await page.getByRole("button", { name: "Buy", exact: true }).first().click();
   await expect(
     page.getByRole("heading", { name: "Your checkout" }),
@@ -60,7 +63,7 @@ test("direct mock purchase without wardrobe saves order and no payment", async (
     fullPage: true,
   });
   await page.getByRole("button", { name: "Buy", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "My orders." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "My orders" })).toBeVisible();
   await expect(page.locator(".order-card")).toHaveCount(1);
   await expect(page.locator(".order-card")).toContainText("Qty 2");
   await page.reload();
@@ -84,7 +87,7 @@ test("seller can add photographed clothes, update stock, index and receive mock 
   );
   await start(page);
   await page.getByRole("button", { name: "Sell on Flairify" }).click();
-  await page.getByLabel("Demo administrator key").fill("test-admin-key");
+  await page.getByLabel("Administrator key").fill("test-admin-key");
   await page.getByRole("button", { name: "Unlock workspace" }).click();
   await expect(
     page.getByRole("button", { name: "Add clothes", exact: true }),

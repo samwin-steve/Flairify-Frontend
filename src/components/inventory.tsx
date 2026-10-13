@@ -72,19 +72,7 @@ export function Inventory({
   );
   return (
     <div className="page-content inventory-page">
-      <div className="eyebrow">A THOUGHTFUL ADDITION</div>
-      <h1>Find your next favourite.</h1>
-      <p className="page-subtitle">
-        Browse, try a piece on your photo, or buy directly. No conversation
-        needed.
-      </p>
-      <div className="notice">
-        <p>
-          Sample items use archived product photos with simulated prices, sizes
-          and stock. They are not live retailer offers. Seller listings use
-          supplied details.
-        </p>
-      </div>
+      <h1>Shop clothes</h1>
       <Button variant="outline" onClick={onSell}>
         <Plus size={16} />
         Sell on Flairify
@@ -183,7 +171,6 @@ export function Inventory({
             <article className="white-panel inventory-card" key={p.id}>
               <div className="inventory-photo">
                 <Media src={p.image} alt={p.name} catalog />
-                {p.sample && <span className="pill">Sample item</span>}
               </div>
               <div className="inventory-card-body">
                 <div className="section-line">
@@ -198,7 +185,7 @@ export function Inventory({
                 <h3>{p.name}</h3>
                 <p className="small-note">
                   {variants.length
-                    ? `${p.sample ? "Sample sizes" : "Available sizes"}: ${[...new Set(variants.map((v) => v.size))].join(", ")}`
+                    ? `Available sizes: ${[...new Set(variants.map((v) => v.size))].join(", ")}`
                     : "Currently unavailable"}
                 </p>
                 <p className="small-note">
@@ -236,7 +223,7 @@ export function Inventory({
                     </p>
                     {onSignIn ? (
                       <Button size="sm" onClick={onSignIn}>
-                        Sign in for real previews
+                        Sign in to try on
                       </Button>
                     ) : (
                       <div className="button-row">
@@ -267,9 +254,6 @@ export function Inventory({
           >
             Show more clothes
           </Button>
-          <p className="small-note">
-            Search and filters include the entire catalogue.
-          </p>
         </div>
       )}
       {!catalog.isLoading && !products.length && (

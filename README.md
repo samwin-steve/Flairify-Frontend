@@ -17,7 +17,7 @@ npm run dev
 
 Start the [FastAPI backend](https://github.com/samwin-steve/Flairify-Backend) on port 8000, then open [localhost:3000](http://localhost:3000). Next.js proxies authenticated HTTP API and private media requests. Optional native voice connects directly to the backend's configured public WSS origin using a short-lived, single-use ticket; Google credentials never enter the browser.
 
-No credentials are needed in demo mode. Start a private demo session, save department, clothing/shoe sizes, store and budget, then start shopping without photos. Optionally add photos or the sample wardrobe, review and confirm garments, and enable “Pair with my wardrobe” in chat. Mumbai recommendations check the combined cost of new pieces against ₹5,000. Sample photos, prices, stock and store locations remain explicitly labeled.
+No credentials are needed in demo mode. Choose **Browse as guest**, save department, clothing/shoe sizes, store and budget, then start shopping without photos. Optionally add photos or the sample wardrobe, review and confirm garments, and enable “Pair with my wardrobe” in chat. Mumbai recommendations check the combined cost of new pieces against ₹5,000. The customer interface omits demo badges and implementation notes; fixture provenance and capability boundaries remain in repository documentation and internal data.
 
 ## Your photo to a new look
 
@@ -56,7 +56,7 @@ Downloaded clothing/editorial images are stored locally in `public/images`; sour
 - **Inventory → Buy** works without photos, wardrobe onboarding or chat. New users save shopping preferences as part of account setup, then can choose **Browse clothes first**. Wardrobe pairing is optional.
 - **Buy** on a stylist look uses the same reviewed checkout. Only new products are included in the displayed total; owned pieces are excluded.
 - **My Orders** shows persisted order snapshots after refresh. Checkout requires confirmation of the items, sizes and quantities and states that no payment is required. Sellers see their listed items in **Orders received**. Orders are saved without payment, shipping, stock reservation or stock decrement.
-- Sample listings remain labeled. New seller listings are shown once their backend indexing job succeeds. Adding a listing makes it eligible for matching recommendations; it does not guarantee inclusion in every look.
+- Customer product cards show product names, prices, sizes and purchase actions. New seller listings are shown once their backend indexing job succeeds. Adding a listing makes it eligible for matching recommendations; it does not guarantee inclusion in every look.
 
 Local browser verification covers direct checkout after shopping setup without photos, a stylist checkout, order persistence, photographed seller listings, stock updates, desktop/mobile overflow, and accessibility scans of the new dialogs. Run the backend with `ENABLE_DEMO_ADMIN=true` and `DEMO_ADMIN_KEY=test-admin-key` for the local seller test. The seller test is skipped when `PLAYWRIGHT_BASE_URL` points at a deployment because public demo administrator access is disabled there; real signed-in seller access is checked separately.
 
@@ -129,3 +129,9 @@ Voice has a heartbeat, one bounded foreground reconnection attempt, and Google-s
 On mobile, the bottom navigation is removed. All pages remain in the hamburger menu, and chat fills the space below the header.
 
 Voice actions release verification (13 October 2026): 25 logic tests and 42 distinct desktop/mobile journeys passed across the full run and focused reruns, plus TypeScript/production compilation. Source `fdca938` deployed as `flairify-web-00020-qhc`. A real Google voice check selected the exact named kurta/sandals, recovered after a forced disconnect, generated one Google image, reused that job on a repeated request, and restored the image/Buy action after refresh. This used synthesized speech and a licensed sample reference photo; physical microphones and quantitative likeness/fit remain unmeasured. See [collected evidence](https://github.com/samwin-steve/Flairify-Backend/blob/main/docs/live-voice-actions-results.json).
+
+## Customer interface copy
+
+The interface uses concise shopping language across onboarding, Stylist, Inventory, Saved Looks, Fitting Room, Orders, Profile and Seller Studio. Demo/sample badges, repetitive marketing footers and the Profile integration-status panel have been removed. Guest entry is **Browse as guest**; fixture wardrobe selection is **Choose starter pieces** and still requires ownership confirmation. The generic asset is named **3D studio mannequin**, never the customer.
+
+AI-generated previews retain one short label and fit caveat. Consent controls, stock validation, sign-in requirements, order behavior and error handling are unchanged. Preview cards use current UI copy even for persisted results with old labels. No catalogue provenance flags, access controls or paid-model restrictions were removed.
