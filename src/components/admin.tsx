@@ -294,7 +294,9 @@ export function Admin({
               <Media src={p.image} alt={p.name} catalog />
               <span className="pill">
                 {p.active === false
-                  ? "Archived"
+                  ? p.attributes.catalogue_status === "draft"
+                    ? "Draft"
+                    : "Archived"
                   : p.indexed
                     ? "Searchable"
                     : "Indexing"}
@@ -303,7 +305,11 @@ export function Admin({
             <div className="inventory-card-body">
               <div className="section-line">
                 <h3>{p.name}</h3>
-                <strong>{money(p.price)}</strong>
+                <strong>
+                  {p.attributes.catalogue_status === "draft" && p.price === 0
+                    ? "Set price"
+                    : money(p.price)}
+                </strong>
               </div>
               <p className="small-note">
                 {p.sku} · {p.variants.length} sizes ·{" "}
