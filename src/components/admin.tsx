@@ -405,8 +405,7 @@ export function Admin({
       )}
       {jobs.data?.jobs
         .filter((j) => j.kind === "index")
-        .slice(-6)
-        .reverse()
+        .slice(0, 6)
         .map((j) => (
           <div className="job-row" key={j.id}>
             <span>{j.stage}</span>
