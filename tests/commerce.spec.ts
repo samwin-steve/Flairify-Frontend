@@ -3,7 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 
 async function start(page: import("@playwright/test").Page) {
   await page.goto("/");
-  await page.getByRole("button", { name: "Browse as guest" }).click();
+  await page.getByRole("button", { name: "Find my look" }).click();
   await page.getByLabel("What should we call you?").fill("Commerce QA");
   await page.getByLabel("Clothing size", { exact: true }).selectOption("M");
   await page.getByLabel("Shoe size (EU)").selectOption("39");

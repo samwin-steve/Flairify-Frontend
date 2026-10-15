@@ -469,7 +469,7 @@ svg {
   border-radius: 50%;
 }
 .landing-copy h1 {
-  font-size: clamp(45px, 5.2vw, 76px);
+  font-size: clamp(45px, 4.7vw, 68px);
   letter-spacing: -3px;
   line-height: 1.07;
   margin-bottom: 26px;
@@ -478,13 +478,15 @@ svg {
   font-size: 16px;
   line-height: 1.9;
   max-width: 390px;
+  margin-bottom: 0;
+  text-wrap: pretty;
 }
 .landing-buttons {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 12px;
-  margin: 34px 0;
+  margin: 22px 0 34px;
 }
 .landing-buttons .button {
   padding: 16px 23px;
@@ -2380,7 +2382,7 @@ svg {
     grid-column: 1/-1;
   }
   .landing-copy h1 {
-    font-size: 55px;
+    font-size: clamp(38px, 4.7vw, 55px);
   }
   .landing-hero {
     gap: 5%;
@@ -2403,6 +2405,7 @@ svg {
   }
   .landing-copy > p {
     font-size: 14px;
+    max-width: 330px;
   }
   .store-grid {
     grid-template-columns: 1fr 1fr;
@@ -2435,7 +2438,7 @@ svg {
     letter-spacing: 1.2px;
   }
   .landing-copy h1 {
-    font-size: 53px;
+    font-size: clamp(33px, 10.5vw, 53px);
     letter-spacing: -2.3px;
   }
   .landing-copy > p {
@@ -2443,7 +2446,7 @@ svg {
     max-width: 330px;
   }
   .landing-buttons {
-    margin: 25px 0;
+    margin: 18px 0 25px;
   }
   .landing-principles {
     margin-top: 24px;
@@ -3039,7 +3042,7 @@ svg {
     font-size: 22px;
   }
   .landing-copy h1 {
-    font-size: 47px;
+    font-size: clamp(33px, 10.5vw, 47px);
   }
   .header-actions {
     gap: 5px;

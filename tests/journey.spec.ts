@@ -6,9 +6,9 @@ test("wardrobe-first journey, budget, saved look, sign-in-required try-on and re
 }) => {
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: /A wardrobe full/ }),
+    page.getByRole("heading", { name: /A wardrobe that feels/ }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Browse as guest" }).click();
+  await page.getByRole("button", { name: "Find my look" }).click();
   await page.getByLabel("What should we call you?").fill("Asha");
   await expect(
     page.getByLabel("Keep my generated outfits in the same background"),
@@ -119,7 +119,7 @@ test("wardrobe-first journey, budget, saved look, sign-in-required try-on and re
 test("landing accessibility, keyboard focus and layout", async ({ page }) => {
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: /A wardrobe full/ }),
+    page.getByRole("heading", { name: /A wardrobe that feels/ }),
   ).toBeVisible();
   await page.keyboard.press("Tab");
   await expect(page.locator(":focus")).toBeVisible();
@@ -142,7 +142,7 @@ test("direct photo upload, ownership review, persistence and 3D fallback", async
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Browse as guest" }).click();
+  await page.getByRole("button", { name: "Find my look" }).click();
   await page.getByLabel("What should we call you?").fill("Photo QA");
   await page.getByLabel("Clothing size", { exact: true }).selectOption("M");
   await page.getByLabel("Shoe size (EU)").selectOption("39");
@@ -234,7 +234,7 @@ test("inventory lists available products and requests sign-in for real previews"
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Browse as guest" }).click();
+  await page.getByRole("button", { name: "Find my look" }).click();
   await page.getByLabel("What should we call you?").fill("Inventory QA");
   await page.getByLabel("Clothing size", { exact: true }).selectOption("M");
   await page.getByLabel("Shoe size (EU)").selectOption("39");

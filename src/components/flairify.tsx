@@ -804,7 +804,6 @@ function Application() {
             flairify<span>✧</span>
           </div>
           <nav>
-            <a href="#how-it-works">A wardrobe with possibilities</a>
             <Button variant="ghost" onClick={() => setAuthOpen(true)}>
               Sign in <ArrowRight size={15} />
             </Button>
@@ -813,17 +812,14 @@ function Application() {
         <main>
           <div className="landing-hero">
             <div className="landing-copy">
-              <div className="eyebrow">
-                <span /> YOUR STYLE. YOUR LIFE. A LITTLE MORE YOU.
-              </div>
               <h1>
-                A wardrobe full
+                A wardrobe that feels
                 <br />
-                of <em>possibilities.</em>
+                <em>like you.</em>
               </h1>
               <p>
-                Share your wardrobe once. Find pieces that work with your
-                life—and see the look on you.
+                Consider us your fitting-room friend. We’ll find pieces you’ll
+                love, show you wearing them, and keep your budget in mind.
               </p>
               <div className="landing-buttons">
                 <Button
@@ -838,30 +834,13 @@ function Application() {
                   disabled={busy}
                 >
                   {busy ? <LoaderCircle className="spin" size={18} /> : null}
-                  Meet your personal stylist <ArrowRight size={18} />
+                  Find my look <ArrowRight size={18} />
                 </Button>
-                {config.data?.mode === "demo" && (
-                  <button
-                    className="text-link"
-                    onClick={startDemo}
-                    disabled={busy}
-                  >
-                    Browse as guest
-                  </button>
-                )}
               </div>
               <div className="landing-principles">
                 <span>
-                  <Shirt size={18} />
-                  Wardrobe first
-                </span>
-                <span>
-                  <Heart size={18} />
-                  Thoughtful choices
-                </span>
-                <span>
                   <ShieldCheck size={18} />
-                  Always your say
+                  Privacy first
                 </span>
               </div>
               {error && (
@@ -876,14 +855,6 @@ function Application() {
                 src="/images/hero.jpg"
                 alt="Editorial style inspiration: a woman wearing a light blazer"
               />
-              <div className="hero-caption">
-                <span>EVERYDAY, BUT A LITTLE MORE YOU.</span>
-                <h2>
-                  Good style starts
-                  <br />
-                  with your story.
-                </h2>
-              </div>
               <div className="floating-look">
                 <img src="/images/blazer.jpg" alt="Beige blazer" />
                 <div>
@@ -896,31 +867,27 @@ function Application() {
                 </div>
                 <Heart size={18} />
               </div>
-              <span className="editorial-tag">
-                Editorial inspiration · Unsplash
-              </span>
             </div>
           </div>
           <section className="how-it-works" id="how-it-works">
             <div>
-              <span className="eyebrow">LESS GUESSWORK. MORE YOU.</span>
-              <h2>Your style, connected.</h2>
+              <h2>Your next look, made personal.</h2>
             </div>
             {[
               {
                 n: "01",
-                title: "Bring your wardrobe",
-                text: "A few photos. Confirm the pieces you own. Keep the final say.",
+                title: "Tell us what you need",
+                text: "An occasion, a style, a budget. Add pieces you already own if you’d like.",
               },
               {
                 n: "02",
-                title: "Tell us what’s happening",
-                text: "A work trip, a weekend, or just a new way to wear your favourites.",
+                title: "See yourself in it",
+                text: "Explore personalised recommendations and preview yourself wearing the look with AI.",
               },
               {
                 n: "03",
-                title: "Make room for the right piece",
-                text: "See outfits that respect your budget and work with your life.",
+                title: "Find it and make it yours",
+                text: "Check your size and availability. Get help finding it in store, or explore nearby stores and online options.",
               },
             ].map((s) => (
               <article key={s.n}>
