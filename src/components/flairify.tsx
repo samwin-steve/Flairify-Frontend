@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { WelcomeFairyCursor } from "./welcome-fairy-cursor";
 import { StylistComposer } from "./stylist-composer";
 import { VoiceConversation } from "./voice-conversation";
 import { useVoiceStylist } from "@/lib/use-voice-stylist";
@@ -143,6 +144,11 @@ export function Flairify() {
       <Application />
     </QueryClientProvider>
   );
+}
+
+// Only entry and setup screens use this boundary. The main app mounts without it.
+function welcomeScreen(content: ReactNode) {
+  return <WelcomeFairyCursor>{content}</WelcomeFairyCursor>;
 }
 
 function Application() {
@@ -746,7 +752,7 @@ function Application() {
   }
 
   if (boot || (session && profile.isPending))
-    return (
+    return welcomeScreen(
       <div className="loading-page">
         <div className="wordmark">
           flairify<span>✧</span>
@@ -756,7 +762,7 @@ function Application() {
       </div>
     );
   if (session && profile.isError)
-    return (
+    return welcomeScreen(
       <main className="loading-page">
         <h1>Let’s reconnect.</h1>
         <p role="alert">We couldn’t load your shopping preferences.</p>
@@ -767,7 +773,7 @@ function Application() {
       </main>
     );
   if (session && (needsSetup || onboarding) && !config.data)
-    return (
+    return welcomeScreen(
       <main className="loading-page">
         <p role="status">Getting your account setup ready…</p>
         {config.isError && (
@@ -776,7 +782,7 @@ function Application() {
       </main>
     );
   if (session && (needsSetup || onboarding) && profile.data && config.data)
-    return (
+    return welcomeScreen(
       <Onboarding
         profile={profile.data}
         config={config.data}
@@ -797,7 +803,7 @@ function Application() {
       />
     );
   if (!session)
-    return (
+    return welcomeScreen(
       <div className="landing">
         <header className="landing-nav">
           <div className="wordmark">

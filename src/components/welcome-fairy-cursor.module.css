@@ -1,0 +1,77 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  overflow: hidden;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.active,
+.active * {
+  cursor: none !important;
+}
+
+.trail {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.fairy {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 48px;
+  will-change: transform;
+  filter: drop-shadow(0 1px 2px #a74b6e35);
+}
+
+.fairy svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.leftWing,
+.rightWing {
+  transform-origin: 28px 30px;
+  animation: flutter 0.65s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+
+.rightWing {
+  animation-direction: alternate-reverse;
+}
+
+.active .leftWing,
+.active .rightWing {
+  animation-play-state: running;
+}
+
+@keyframes flutter {
+  from {
+    transform: scaleX(0.8) rotate(-5deg);
+  }
+  to {
+    transform: scaleX(1) rotate(5deg);
+  }
+}
+
+@media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .layer {
+    display: none;
+  }
+
+  .active,
+  .active * {
+    cursor: revert !important;
+  }
+
+  .leftWing,
+  .rightWing {
+    animation: none;
+  }
+}
