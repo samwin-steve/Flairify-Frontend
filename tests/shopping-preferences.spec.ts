@@ -13,7 +13,7 @@ test("saved shopping preferences, optional wardrobe, relevant distinct occasion 
   await page.getByLabel("Preferred store").selectOption("lower-parel");
   await expect(
     page.getByLabel("Pair recommendations with my wardrobe by default"),
-  ).not.toBeChecked();
+  ).toHaveCount(0);
   await expect(
     page.getByLabel("Remember my optional style and colour preferences"),
   ).not.toBeChecked();

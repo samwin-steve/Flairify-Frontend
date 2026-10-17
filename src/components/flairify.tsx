@@ -12,6 +12,7 @@ import {
 } from "@/lib/voice-navigation";
 import { streamChat } from "@/lib/chat-stream";
 import { shoppingReady, selectedConversation } from "@/lib/shopping-session";
+import { loadFirebaseConfig } from "@/lib/firebase-config";
 import {
   QueryClient,
   QueryClientProvider,
@@ -309,14 +310,16 @@ function Application() {
     setSession(!!existing);
     const url = new URL(window.location.href);
     setStoreId(url.searchParams.get("store") || "");
+    let cancelled = false;
     let unsubscribe = () => {};
-    fetch("/config")
-      .then((r) => r.json())
+    loadFirebaseConfig()
       .then(({ firebase }) => {
+        if (cancelled) return;
         if (firebase.apiKey && firebase.appId) {
           if (!getApps().length) initializeApp(firebase);
           setFirebaseReady(true);
           unsubscribe = onAuthStateChanged(getAuth(), (user) => {
+            if (cancelled) return;
             if (user) {
               setSession(true);
               qc.invalidateQueries();
@@ -325,8 +328,13 @@ function Application() {
           });
         } else setBoot(false);
       })
-      .catch(() => setBoot(false));
-    return () => unsubscribe();
+      .catch(() => {
+        if (!cancelled) setBoot(false);
+      });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [qc]);
   const profile = useQuery({
     queryKey: ["profile"],
@@ -504,23 +512,20 @@ function Application() {
   async function login(google = false) {
     setBusy(true);
     await action(async () => {
-      if (!firebaseReady)
+      if (boot || !firebaseReady)
         throw new Error(
           "Sign-in is unavailable right now. You can browse as a guest.",
         );
+      // Clear guest data before auth changes enable the account queries.
+      // The auth listener and profile query handle both sign-in and restoration.
+      qc.clear();
       if (google) await signInWithPopup(getAuth(), new GoogleAuthProvider());
       else if (register)
         await createUserWithEmailAndPassword(getAuth(), email, password);
       else await signInWithEmailAndPassword(getAuth(), email, password);
       localStorage.removeItem("flairify-token");
       openChat();
-      qc.clear();
-      setSession(true);
       setAuthOpen(false);
-      qc.invalidateQueries();
-      const signedInProfile = await api<Profile>("/profile");
-      qc.setQueryData(["profile"], signedInProfile);
-      setOnboarding(!shoppingReady(signedInProfile));
     });
     setBusy(false);
   }
@@ -751,7 +756,7 @@ function Application() {
     );
   }
 
-  if (boot || (session && profile.isPending))
+  if (session && (boot || profile.isPending))
     return welcomeScreen(
       <div className="loading-page">
         <div className="wordmark">
@@ -837,7 +842,7 @@ function Application() {
                         }
                       : startDemo
                   }
-                  disabled={busy}
+                  disabled={busy || boot || (!firebaseReady && config.isPending)}
                 >
                   {busy ? <LoaderCircle className="spin" size={18} /> : null}
                   Find my look <ArrowRight size={18} />
@@ -914,7 +919,8 @@ function Application() {
           <Modal
             open
             onOpenChange={setAuthOpen}
-            title={register ? "A little more you." : "Welcome back."}
+            title={register ? "Welcome!" : "Welcome back."}
+            description={null}
           >
             <form
               className="form-stack"
@@ -927,7 +933,7 @@ function Application() {
                 type="button"
                 variant="outline"
                 onClick={() => login(true)}
-                disabled={busy || !firebaseReady}
+                disabled={busy || boot || !firebaseReady}
               >
                 <span className="google-g">G</span>Continue with Google
               </Button>
@@ -951,7 +957,7 @@ function Application() {
                   onChange={(e) => setPassword(e.target.value)}
                 />
               </label>
-              <Button disabled={busy || !firebaseReady}>
+              <Button disabled={busy || boot || !firebaseReady}>
                 {register ? "Create account" : "Sign in"}
               </Button>
               <button
@@ -961,7 +967,8 @@ function Application() {
               >
                 {register ? "Already have an account?" : "Create an account"}
               </button>
-              {!firebaseReady && (
+              {boot && <p role="status">Getting sign-in ready…</p>}
+              {!boot && !firebaseReady && (
                 <div className="notice">
                   <p>
                     Sign-in is unavailable right now. You can browse as a guest.

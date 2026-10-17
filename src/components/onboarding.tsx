@@ -51,14 +51,21 @@ type Basics = z.infer<typeof profileSchema>;
 export function ProfileForm({
   profile,
   onSaved,
+  initialSetup = false,
 }: {
   profile: Profile;
   onSaved: () => void;
+  initialSetup?: boolean;
 }) {
   const qc = useQueryClient();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [styles, setStyles] = useState(profile.styles);
+  const requiredMark = initialSetup ? (
+    <span className="required-mark" aria-hidden="true">
+      *
+    </span>
+  ) : null;
   const stores = useQuery({
     queryKey: ["stores"],
     queryFn: () => api<{ stores: Shop[] }>("/stores"),
@@ -90,7 +97,7 @@ export function ProfileForm({
         preferred_store_id: data.preferred_store_id || null,
         include_wardrobe: data.include_wardrobe,
         styles,
-        colours: [],
+        colours: initialSetup ? profile.colours : [],
         clothing_size: data.clothing_size,
         shoe_size: data.shoe_size,
         fit: data.fit,
@@ -113,41 +120,47 @@ export function ProfileForm({
   return (
     <form onSubmit={form.handleSubmit(submit)} className="form-stack">
       <div className="field">
-        <label htmlFor="name">What should we call you?</label>
+        <label htmlFor="name">
+          What should we call you?{requiredMark}
+        </label>
         <input
           id="name"
           placeholder="Your first name"
+          required={initialSetup}
+          aria-label={initialSetup ? "What should we call you?" : undefined}
           {...form.register("name")}
         />
         {form.formState.errors.name && (
           <small className="error">Please enter your name.</small>
         )}
       </div>
-      <div className="field">
-        <label>
-          A little about your style <span className="muted">(optional)</span>
-        </label>
-        <div className="chips">
-          {["Minimal", "Classic", "Relaxed", "Colourful", "Tailored"].map(
-            (s) => (
-              <button
-                type="button"
-                className={"chip " + (styles.includes(s) ? "selected" : "")}
-                key={s}
-                onClick={() =>
-                  setStyles(
-                    styles.includes(s)
-                      ? styles.filter((t) => t !== s)
-                      : [...styles, s],
-                  )
-                }
-              >
-                {s}
-              </button>
-            ),
-          )}
+      {!initialSetup && (
+        <div className="field">
+          <label>
+            A little about your style <span className="muted">(optional)</span>
+          </label>
+          <div className="chips">
+            {["Minimal", "Classic", "Relaxed", "Colourful", "Tailored"].map(
+              (s) => (
+                <button
+                  type="button"
+                  className={"chip " + (styles.includes(s) ? "selected" : "")}
+                  key={s}
+                  onClick={() =>
+                    setStyles(
+                      styles.includes(s)
+                        ? styles.filter((t) => t !== s)
+                        : [...styles, s],
+                    )
+                  }
+                >
+                  {s}
+                </button>
+              ),
+            )}
+          </div>
         </div>
-      </div>
+      )}
       <div className="form-grid">
         <div className="field">
           <label htmlFor="department">Shopping department</label>
@@ -170,8 +183,13 @@ export function ProfileForm({
           </select>
         </div>
         <div className="field">
-          <label htmlFor="size">Clothing size</label>
-          <select id="size" required {...form.register("clothing_size")}>
+          <label htmlFor="size">Clothing size{requiredMark}</label>
+          <select
+            id="size"
+            required
+            aria-label={initialSetup ? "Clothing size" : undefined}
+            {...form.register("clothing_size")}
+          >
             <option value="">Choose your size</option>
             {CLOTHING_SIZES.map((s) => (
               <option key={s}>{s}</option>
@@ -179,40 +197,53 @@ export function ProfileForm({
           </select>
         </div>
         <div className="field">
-          <label htmlFor="shoes">Shoe size (EU)</label>
-          <select id="shoes" required {...form.register("shoe_size")}>
+          <label htmlFor="shoes">Shoe size (EU){requiredMark}</label>
+          <select
+            id="shoes"
+            required
+            aria-label={initialSetup ? "Shoe size (EU)" : undefined}
+            {...form.register("shoe_size")}
+          >
             <option value="">Choose your size</option>
             {SHOE_SIZES.map((s) => (
               <option key={s}>{s}</option>
             ))}
           </select>
         </div>
-        <div className="field">
-          <label htmlFor="fit">Fit preference</label>
-          <select id="fit" {...form.register("fit")}>
-            {["Comfortable", "Relaxed", "Tailored"].map((s) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="budget">Typical budget (₹)</label>
-          <input
-            id="budget"
-            type="number"
-            min="0"
-            {...form.register("budget")}
-          />
-        </div>
+        {!initialSetup && (
+          <>
+            <div className="field">
+              <label htmlFor="fit">Fit preference</label>
+              <select id="fit" {...form.register("fit")}>
+                {["Comfortable", "Relaxed", "Tailored"].map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="budget">Typical budget (₹)</label>
+              <input
+                id="budget"
+                type="number"
+                min="0"
+                {...form.register("budget")}
+              />
+            </div>
+          </>
+        )}
       </div>
-      <label className="check-line">
-        <input type="checkbox" {...form.register("include_wardrobe")} />
-        Pair recommendations with my wardrobe by default
-      </label>
-      <p className="fine-print">
-        Optional. We’ll only use confirmed pieces that suit the occasion. You
-        can switch pairing on or off in chat.
-      </p>
+      {!initialSetup && (
+        <>
+          <label className="check-line">
+            <input type="checkbox" {...form.register("include_wardrobe")} />
+            Pair recommendations with my wardrobe by default
+          </label>
+          <p className="fine-print">
+            Optional. We’ll only use confirmed pieces that suit the occasion. You
+            can switch pairing on or off in chat.
+          </p>
+        </>
+      )}
       <div className="background-preference">
         <label className="check-line">
           <input type="checkbox" {...form.register("keep_background")} />
@@ -220,8 +251,7 @@ export function ProfileForm({
         </label>
         <p className="fine-print">
           Checked: keep the background from your reference photo. Unchecked: use
-          a plain white background. Saved for future previews; you can change
-          this in Profile.
+          a plain white background.
         </p>
       </div>
       <label className="check-line">
@@ -232,12 +262,18 @@ export function ProfileForm({
         <input type="checkbox" {...form.register("processing")} />I agree to
         process my selected photos with Google Cloud AI to identify clothes and
         create shop-style garment images and requested outfit previews when
-        connected
+        connected.
       </label>
       <p className="fine-print">
-        Sizes come from you. Photos do not give us accurate body measurements.
-        Your department, sizes, store and budget are saved to your account.
-        Review them in Profile anytime and confirm the size again at checkout.
+        {initialSetup ? (
+          "You can change these settings anytime in Profile & preferences."
+        ) : (
+          <>
+            Sizes come from you. Photos do not give us accurate body measurements.
+            Your department, sizes, store and budget are saved to your account.
+            Review them in Profile anytime and confirm the size again at checkout.
+          </>
+        )}
       </p>
       {error && (
         <p role="alert" className="error">
@@ -1062,7 +1098,7 @@ export function Onboarding({
         ))}
       </div>
       <main className="onboarding-content">
-        <div className="eyebrow">A GOOD OUTFIT STARTS WITH YOU</div>
+        {step > 0 && <div className="eyebrow">A GOOD OUTFIT STARTS WITH YOU</div>}
         <h1>
           {
             [
@@ -1073,19 +1109,21 @@ export function Onboarding({
             ][step]
           }
         </h1>
-        <p className="page-subtitle">
-          {
-            [
-              "Finish setting up your account with your sizes, store and budget. You can change these in Profile anytime. Photos are optional.",
-              "Clear light, a simple background, and your whole outfit in the frame.",
-              "Share a few outfit photos. We’ll help you find pieces that work with what you already wear.",
-              "Keep what you own. Correct the details. You’re always the final say.",
-            ][step]
-          }
-        </p>
+        {step > 0 && (
+          <p className="page-subtitle">
+            {
+              [
+                "Clear light, a simple background, and your whole outfit in the frame.",
+                "Share a few outfit photos. We’ll help you find pieces that work with what you already wear.",
+                "Keep what you own. Correct the details. You’re always the final say.",
+              ][step - 1]
+            }
+          </p>
+        )}
         {step === 0 && (
           <div className="narrow-form">
             <ProfileForm
+              initialSetup
               profile={profile}
               onSaved={() => {
                 qc.invalidateQueries({ queryKey: ["profile"] });
@@ -1295,7 +1333,9 @@ export function Onboarding({
       </main>
       <footer className="onboarding-footer">
         <ShieldCheck size={15} />
-        Your wardrobe. Your choices. Always.
+        {step === 0
+          ? "Your data remains safe"
+          : "Your wardrobe. Your choices. Always."}
       </footer>
     </div>
   );

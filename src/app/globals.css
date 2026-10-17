@@ -501,7 +501,6 @@ svg {
   display: flex;
   gap: 22px;
   padding-top: 28px;
-  border-top: 1px solid var(--line);
   margin-top: 40px;
 }
 .landing-principles > span {
@@ -601,12 +600,11 @@ svg {
 }
 .how-it-works {
   max-width: 1440px;
-  margin: 75px auto 0;
+  margin: 48px auto 0;
   display: grid;
   grid-template-columns: 1.2fr 1fr 1fr 1fr;
   gap: 35px;
-  padding: 40px 5.5%;
-  border-top: 1px solid var(--line);
+  padding: 24px 5.5% 40px;
 }
 .how-it-works h2 {
   font-size: 28px;
@@ -1915,6 +1913,10 @@ svg {
   min-width: 0;
   max-width: 100%;
 }
+.onboarding .required-mark {
+  color: #b42318;
+  margin-left: 4px;
+}
 .onboarding-content {
   max-width: 1030px;
   margin: auto;
@@ -2178,6 +2180,9 @@ svg {
   font-size: 11px;
   line-height: 1.7;
   max-width: 420px;
+}
+.modal-heading-compact h2 {
+  margin-bottom: 0;
 }
 .modal-heading .icon-button {
   margin-top: -8px;
@@ -2478,8 +2483,8 @@ svg {
   }
   .how-it-works {
     grid-template-columns: 1fr;
-    margin: 35px auto 0;
-    padding: 35px 25px;
+    margin: 20px auto 0;
+    padding: 24px 25px 35px;
     gap: 16px;
   }
   .how-it-works article {
