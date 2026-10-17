@@ -132,10 +132,6 @@ export function FittingRoom({
         ? 2000
         : false,
   });
-  const config = useQuery({
-    queryKey: ["config", "account"],
-    queryFn: ({ signal }) => api<Config>("/config", { signal }),
-  });
   const photos = useQuery({
     queryKey: ["photos"],
     queryFn: () => api<{ references: Reference[]; photos: Photo[] }>("/photos"),
@@ -153,16 +149,6 @@ export function FittingRoom({
     } catch (e) {
       setError((e as Error).message);
     }
-  }
-  async function download(id: string) {
-    await action(async () => {
-      const url = await mediaBlob(id);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "flairify-style-preview.png";
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    });
   }
   return (
     <div className="page-content">
@@ -208,167 +194,7 @@ export function FittingRoom({
           )}
           <div className="generation-grid">
             {list.map((j) => (
-              <article className="white-panel generation-card" key={j.id}>
-                <div className="section-line">
-                  <span className="pill">
-                    {j.kind === "video" ? "Show in motion" : "Style preview"}
-                  </span>
-                  <span className={"status " + j.status}>{j.status}</span>
-                </div>
-                <h3>{j.stage}</h3>
-                {["queued", "running"].includes(j.status) && (
-                  <p className="small-note">
-                    <LoaderCircle size={17} className="spin" />
-                    You can leave and come back. This job is saved.
-                  </p>
-                )}
-                {j.error && (
-                  <p className="error" role="alert">
-                    {j.error}
-                  </p>
-                )}
-                {j.result?.media_id &&
-                  (j.kind === "video" ? (
-                    <PrivateVideo id={j.result.media_id} />
-                  ) : (
-                    <figure className="generated-preview">
-                      <figcaption>Your preview</figcaption>
-                      <Media
-                        src={"media:" + j.result.media_id}
-                        alt="AI-generated style visualization"
-                        className="preview-image"
-                      />
-                    </figure>
-                  ))}
-                {!j.result?.pieces?.length && j.result?.product_name && (
-                  <p>
-                    <strong>{j.result.product_name}</strong>
-                  </p>
-                )}
-                {!!j.result?.pieces?.length && (
-                  <div className="preview-used-pieces">
-                    <h4>Included in this preview</h4>
-                    <ul>
-                      {j.result.pieces.map((piece) => (
-                        <li key={piece.kind + piece.id}>
-                          {piece.name} ·{" "}
-                          {piece.kind === "wardrobe" ? "Owned" : "New"}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {j.kind === "try_on" &&
-                  j.result?.keep_background !== undefined && (
-                    <p className="fine-print">
-                      Background requested:{" "}
-                      {j.result.keep_background
-                        ? "same as your photo"
-                        : "plain white"}
-                      . Regenerate uses your current Profile setting.
-                    </p>
-                  )}
-                {j.result?.selection_adjustments?.map((message, index) => (
-                  <p className="fine-print" key={index}>
-                    {message}
-                  </p>
-                ))}
-                {j.result?.media_id && (
-                  <p className="fine-print">
-                    {j.kind === "video"
-                      ? "AI-generated video"
-                      : "AI-generated preview"}
-                    {" · Appearance and fit may vary."}
-                  </p>
-                )}
-                {j.kind === "try_on" &&
-                  j.status === "succeeded" &&
-                  j.result?.media_id && (
-                    <PreviewShopping jobId={j.id} onBuy={onBuy} />
-                  )}
-                <div className="button-row">
-                  {j.status === "succeeded" && !j.result?.accepted && (
-                    <Button
-                      size="sm"
-                      onClick={() =>
-                        action(() => post("/jobs/" + j.id + "/accept"))
-                      }
-                    >
-                      <Check size={15} />
-                      Accept preview
-                    </Button>
-                  )}
-                  {j.kind === "try_on" &&
-                    j.result?.accepted &&
-                    config.data?.video && (
-                      <Button
-                        size="sm"
-                        onClick={() =>
-                          action(() =>
-                            post("/generate/video", {
-                              source_job_id: j.id,
-                              accepted_preview: true,
-                              request_key: crypto.randomUUID(),
-                              duration: 4,
-                            }),
-                          )
-                        }
-                      >
-                        <Clapperboard size={15} />
-                        Show in motion
-                      </Button>
-                    )}
-                  {j.status === "succeeded" &&
-                    j.kind === "try_on" &&
-                    j.result?.media_id && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => download(j.result!.media_id!)}
-                        >
-                          <Download size={15} />
-                          Download
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() =>
-                            action(() => post("/jobs/" + j.id + "/regenerate"))
-                          }
-                        >
-                          <RotateCcw size={15} />
-                          Regenerate
-                        </Button>
-                      </>
-                    )}
-                  {j.status === "failed" && j.attempts < 3 && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        action(() => post("/jobs/" + j.id + "/retry"))
-                      }
-                    >
-                      <RotateCcw size={15} />
-                      Retry
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => action(() => del("/jobs/" + j.id))}
-                  >
-                    <Trash2 size={15} />
-                    {["queued", "running"].includes(j.status)
-                      ? "Cancel"
-                      : "Delete"}
-                  </Button>
-                </div>
-                <p className="fine-print">
-                  {new Date(j.created_at).toLocaleString()}
-                </p>
-              </article>
+              <PreviewCard key={j.id} job={j} onBuy={onBuy} />
             ))}
           </div>
         </>
@@ -518,5 +344,206 @@ function PreviewShopping({
         </p>
       )}
     </section>
+  );
+}
+
+export function PreviewCard({ job: j, onBuy, compact = false }: {
+  job: Job;
+  onBuy: (products: Product[], previewJobId: string) => void;
+  compact?: boolean;
+}) {
+  const qc = useQueryClient();
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
+  const config = useQuery({
+    queryKey: ["config", "account"],
+    queryFn: ({ signal }) => api<Config>("/config", { signal }),
+  });
+  async function action(fn: () => Promise<unknown>) {
+    if (pending) return;
+    setPending(true);
+    setError("");
+    try {
+      await fn();
+      await qc.invalidateQueries({ queryKey: ["jobs"] });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setPending(false);
+    }
+  }
+  async function download(id: string) {
+    await action(async () => {
+      const url = await mediaBlob(id);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "flairify-style-preview.png";
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+  }
+  return (
+    <article id={"preview-" + j.id} className={"white-panel generation-card" + (compact ? " chat-preview" : "")}>
+      <div className="section-line">
+        <span className="pill">
+          {j.kind === "video" ? "Show in motion" : "Style preview"}
+        </span>
+        <span className={"status " + j.status}>{j.status}</span>
+      </div>
+      {!compact && <h3>{j.stage}</h3>}
+      {["queued", "running"].includes(j.status) && (
+        <p className="small-note" role="status" aria-live="polite">
+          <LoaderCircle size={17} className="spin" />
+          {compact ? "Creating your preview…" : "You can leave and come back. This job is saved."}
+        </p>
+      )}
+      {j.error && (
+        <p className="error" role="alert">
+          {j.error}
+        </p>
+      )}
+      {j.result?.media_id &&
+        (j.kind === "video" ? (
+          <PrivateVideo id={j.result.media_id} />
+        ) : (
+          <figure className="generated-preview">
+            <figcaption>Your preview</figcaption>
+            <Media
+              src={"media:" + j.result.media_id}
+              alt="AI-generated style visualization"
+              className="preview-image"
+            />
+          </figure>
+        ))}
+      {!j.result?.pieces?.length && j.result?.product_name && (
+        <p>
+          <strong>{j.result.product_name}</strong>
+        </p>
+      )}
+      {!compact && !!j.result?.pieces?.length && (
+        <div className="preview-used-pieces">
+          <h4>Included in this preview</h4>
+          <ul>
+            {j.result.pieces.map((piece) => (
+              <li key={piece.kind + piece.id}>
+                {piece.name} ·{" "}
+                {piece.kind === "wardrobe" ? "Owned" : "New"}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {!compact && j.kind === "try_on" &&
+        j.result?.keep_background !== undefined && (
+          <p className="fine-print">
+            Background requested:{" "}
+            {j.result.keep_background
+              ? "same as your photo"
+              : "plain white"}
+            . Regenerate uses your current Profile setting.
+          </p>
+        )}
+      {j.result?.selection_adjustments?.map((message, index) => (
+        <p className="fine-print" key={index}>
+          {message}
+        </p>
+      ))}
+      {j.result?.media_id && (
+        <p className="fine-print">
+          {j.kind === "video"
+            ? "AI-generated video"
+            : "AI-generated preview"}
+          {" · Appearance and fit may vary."}
+        </p>
+      )}
+      {j.kind === "try_on" &&
+        j.status === "succeeded" &&
+        j.result?.media_id && (
+          <PreviewShopping jobId={j.id} onBuy={onBuy} />
+        )}
+      <fieldset className="button-row preview-actions" disabled={pending}>
+        {j.status === "succeeded" && !j.result?.accepted && (
+          <Button
+            size="sm"
+            onClick={() =>
+              action(() => post("/jobs/" + j.id + "/accept"))
+            }
+          >
+            <Check size={15} />
+            Accept preview
+          </Button>
+        )}
+        {j.kind === "try_on" &&
+          j.result?.accepted &&
+          config.data?.video && (
+            <Button
+              size="sm"
+              onClick={() =>
+                action(() =>
+                  post("/generate/video", {
+                    source_job_id: j.id,
+                    accepted_preview: true,
+                    request_key: crypto.randomUUID(),
+                    duration: 4,
+                  }),
+                )
+              }
+            >
+              <Clapperboard size={15} />
+              Show in motion
+            </Button>
+          )}
+        {j.status === "succeeded" &&
+          j.kind === "try_on" &&
+          j.result?.media_id && (
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => download(j.result!.media_id!)}
+              >
+                <Download size={15} />
+                Download
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  action(() => post("/jobs/" + j.id + "/regenerate"))
+                }
+              >
+                <RotateCcw size={15} />
+                Regenerate
+              </Button>
+            </>
+          )}
+        {j.status === "failed" && j.attempts < 3 && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              action(() => post("/jobs/" + j.id + "/retry"))
+            }
+          >
+            <RotateCcw size={15} />
+            Retry
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => action(() => del("/jobs/" + j.id))}
+        >
+          <Trash2 size={15} />
+          {["queued", "running"].includes(j.status)
+            ? "Cancel"
+            : "Delete"}
+        </Button>
+      </fieldset>
+      {error && <p role="alert" className="error">{error}</p>}
+      <p className="fine-print">
+        {new Date(j.created_at).toLocaleString()}
+      </p>
+    </article>
   );
 }

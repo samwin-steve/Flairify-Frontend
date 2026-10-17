@@ -4314,3 +4314,9 @@ svg {
 .catalogue-metadata .metadata-tag p { margin: 0.3rem 0 0; }
 .catalogue-metadata .metadata-tag strong { text-transform: capitalize; }
 .catalogue-metadata { overflow-wrap: anywhere; }
+
+/* Shared previews stay compact inside the conversation. */
+.chat-preview { width: 100%; max-width: 440px; margin-top: 16px; min-width: 0; }
+.chat-preview .preview-image { aspect-ratio: 3 / 4; max-height: 460px; object-fit: contain; }
+.preview-actions { border: 0; padding: 0; margin: 0; min-width: 0; }
+.chat-preview .small-note { display: flex; align-items: center; gap: 10px; padding: 16px 0; }

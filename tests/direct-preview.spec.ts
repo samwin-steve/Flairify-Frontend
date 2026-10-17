@@ -122,6 +122,13 @@ test("direct multi-piece preview, conflict resolution, refresh and editable back
         "\n\n",
     }),
   );
+  const conversation = {
+    id: "preview-test", title: "Preview test",
+    messages: [{ id: "answer", role: "assistant", content: "Choose the pieces for your preview.", outfits: [outfit] }],
+  };
+  await page.route("**/api/conversations", (route) => route.fulfill({ json: { conversations: [conversation] } }));
+  await page.route("**/api/media/chat-preview-image", (route) => route.fulfill({ path: "public/images/hero.jpg", contentType: "image/jpeg" }));
+  await page.route("**/api/jobs/stubbed-google-job/shopping", (route) => route.fulfill({ json: { products: [chosen[0]], unavailable: [] } }));
   await page.route("**/api/jobs", (route) =>
     route.fulfill({ json: { jobs: job ? [job] : [] } }),
   );
@@ -129,6 +136,9 @@ test("direct multi-piece preview, conflict resolution, refresh and editable back
     calls.push(route.request().postDataJSON());
     job = {
       id: "stubbed-google-job",
+      conversation_id: calls.at(-1).conversation_id,
+      message_id: calls.at(-1).message_id,
+      created_at: new Date().toISOString(),
       kind: "try_on",
       status: "queued",
       stage: "Queued preview test",
@@ -190,9 +200,9 @@ test("direct multi-piece preview, conflict resolution, refresh and editable back
     fullPage: true,
   });
   await button.click();
-  await expect(
-    page.getByRole("heading", { name: "Fitting Room" }),
-  ).toBeVisible();
+  const preview = page.locator(".messages .chat-preview");
+  await expect(preview.getByRole("status")).toHaveText("Creating your preview…");
+  await expect(page.getByRole("heading", { name: "Fitting Room" })).toHaveCount(0);
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect(calls).toHaveLength(1);
   expect(calls[0].selections.map((p: any) => p.id)).toEqual([
@@ -202,10 +212,23 @@ test("direct multi-piece preview, conflict resolution, refresh and editable back
     chosen[2].id,
   ]);
   expect(calls[0].outfit_id).toBe("outfit-test");
+  expect(calls[0].conversation_id).toBe("preview-test");
+  expect(calls[0].message_id).toBe("answer");
+  job = { ...job, status: "succeeded", stage: "Preview complete", result: { media_id: "chat-preview-image" } };
+  await expect(preview.getByAltText("AI-generated style visualization")).toBeVisible();
+  await preview.getByRole("button", { name: "Buy", exact: true }).click();
+  await expect(page.getByRole("dialog").locator(".checkout-item")).toHaveCount(1);
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: `test-results/${test.info().project.name}-chat-preview.png`, fullPage: true });
   await page.reload();
+  await page.locator(".messages .chat-preview").scrollIntoViewIfNeeded();
+  await expect(page.locator(".messages .chat-preview").getByAltText("AI-generated style visualization")).toBeVisible();
   await navigate(page, "Fitting Room");
   await expect(
-    page.getByText("Queued preview test", { exact: true }),
+    page.getByText("Preview complete", { exact: true }),
   ).toBeVisible();
   await navigate(page, "Profile");
   await page.getByLabel("What should we call you?").fill("Preview tester");

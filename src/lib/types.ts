@@ -130,6 +130,8 @@ export interface Conversation {
   updated_at: string;
 }
 export interface Job {
+  conversation_id?: string;
+  message_id?: string;
   id: string;
   kind: string;
   status: string;

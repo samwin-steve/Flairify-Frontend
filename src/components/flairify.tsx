@@ -85,7 +85,7 @@ import {
   PersonSelection,
   PhotoPicker,
 } from "./onboarding";
-import { FittingRoom } from "./fitting-room";
+import { FittingRoom, PreviewCard } from "./fitting-room";
 import { Admin } from "./admin";
 import { Inventory } from "./inventory";
 import { Checkout, Orders } from "./checkout";
@@ -690,7 +690,7 @@ function Application() {
       setToast("A good look, saved for later.");
     });
   }
-  async function requestTryOn(selected: PreviewSelection[], outfitId?: string) {
+  async function requestTryOn(selected: PreviewSelection[], outfitId?: string, messageId?: string) {
     if (!selected.length) throw new Error("Select at least one garment first.");
     if (profile.data?.demo)
       throw new Error("Sign in to create a preview with your photo.");
@@ -705,7 +705,13 @@ function Application() {
     if (previewLock.current)
       throw new Error("Your preview request is already being sent.");
     previewLock.current = true;
+    const chatMessage = page === "stylist"
+      ? messageId || [...messages].reverse().find((m) => m.role === "assistant")?.id
+      : undefined;
+    const chatId = chatMessage ? convoId : null;
     const fingerprint = JSON.stringify([
+      chatId,
+      chatMessage,
       outfitId,
       selected,
       profile.data?.keep_background,
@@ -713,16 +719,21 @@ function Application() {
     const key = previewKeys.current.get(fingerprint) || crypto.randomUUID();
     previewKeys.current.set(fingerprint, key);
     try {
-      await post("/generate/try_on", {
+      const job = await post<Job>("/generate/try_on", {
         selections: selected,
+        conversation_id: chatId,
+        message_id: chatId ? chatMessage : undefined,
         outfit_id: outfitId,
         request_key: key,
       });
       previewKeys.current.delete(fingerprint);
-      await qc.invalidateQueries({ queryKey: ["jobs"] });
-      changePage("fitting");
-      setToast(
-        "Your selected look is being generated. You can return to it in Fitting Room.",
+      qc.setQueryData<{ jobs: Job[] }>(["jobs"], (old) => ({
+        jobs: [job, ...(old?.jobs || []).filter((j) => j.id !== job.id)],
+      }));
+      void qc.invalidateQueries({ queryKey: ["jobs"] });
+      if (!chatId) changePage("fitting");
+      else requestAnimationFrame(() =>
+        document.getElementById("preview-" + job.id)?.scrollIntoView({ block: "nearest", behavior: "auto" }),
       );
     } finally {
       previewLock.current = false;
@@ -1328,18 +1339,6 @@ function Application() {
                               Voice {m.interrupted ? "· Interrupted" : ""}
                             </span>
                           )}
-                          {m.preview_job_id && (
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                setReferenceTab(false);
-                                changePage("fitting");
-                              }}
-                            >
-                              <WandSparkles size={16} /> View preview in Fitting
-                              Room
-                            </Button>
-                          )}
                           {(m.id === streamingMessageId ? [] : m.outfits)?.map(
                             (o, i) => (
                               <LookCard
@@ -1356,7 +1355,7 @@ function Application() {
                                 }
                                 onSave={() => saveLook(o)}
                                 onTryOn={(selected) =>
-                                  requestTryOn(selected, o.id)
+                                  requestTryOn(selected, o.id, m.id)
                                 }
                                 keepBackground={!!profile.data?.keep_background}
                                 onSetup={() => changePage("profile")}
@@ -1378,6 +1377,15 @@ function Application() {
                               />
                             ),
                           )}
+                          {jobs.data?.jobs.filter((j) =>
+                            j.kind === "try_on" && j.status !== "cancelled" &&
+                            (j.id === m.preview_job_id ||
+                              (j.conversation_id === convoId && j.message_id === m.id)),
+                          ).slice().reverse().map((j) => (
+                            <PreviewCard key={j.id} job={j} compact
+                              onBuy={(products, previewJobId) => setCheckout({ products, previewJobId })}
+                            />
+                          ))}
                         </div>
                       </div>
                     ))}
