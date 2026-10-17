@@ -51,7 +51,10 @@ function ModelViewer() {
   }, [ready]);
   return (
     <div className="viewer-panel">
-      <h2>3D studio mannequin</h2>
+      <h2>
+        3D studio mannequin{" "}
+        <span className="pill rose coming-soon-badge">p r e v i e w</span>
+      </h2>
       {ready ? (
         <model-viewer
           ref={ref}
@@ -85,7 +88,7 @@ function ModelViewer() {
         <p className="fine-print">
           {ar
             ? "Drag to rotate. Pinch or scroll to zoom."
-            : "AR is unavailable on this device. Drag to rotate the 3D form; pinch or scroll to zoom."}
+            : "Drag to rotate the 3D form; pinch or scroll to zoom."}
         </p>
       )}
       {ar && (
@@ -167,6 +170,9 @@ export function FittingRoom({
             onClick={() => setTab(key)}
           >
             {label}
+            {key === "3d" && (
+              <span className="pill rose coming-soon-badge">Coming soon</span>
+            )}
           </button>
         ))}
       </div>
@@ -201,7 +207,7 @@ export function FittingRoom({
       )}
       {tab === "references" && (
         <>
-          <div className="notice">
+          <div className="notice reference-notice">
             <p>
               Your wardrobe uploads are available for previews too. Full-body
               references also create garment suggestions when you have allowed

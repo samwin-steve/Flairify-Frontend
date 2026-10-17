@@ -301,6 +301,12 @@ svg {
   color: var(--rose);
   border-color: transparent;
 }
+.coming-soon-badge {
+  margin-left: 8px;
+  font-family: var(--font-sans);
+  font-weight: 400;
+  vertical-align: middle;
+}
 .section-line {
   display: flex;
   align-items: center;
@@ -1940,6 +1946,21 @@ svg {
   grid-template-columns: 1fr 1fr;
   gap: 24px;
 }
+.reference-notice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 20px;
+}
+.reference-notice > .button {
+  white-space: nowrap;
+}
+.reference-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
 .reference-grid h3 {
   font-family: var(--serif);
   font-weight: 400;
@@ -2835,6 +2856,13 @@ svg {
   }
   .reference-grid {
     grid-template-columns: 1fr;
+  }
+  .reference-notice {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .reference-notice > .button {
+    justify-self: start;
   }
   .source-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

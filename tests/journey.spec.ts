@@ -20,7 +20,7 @@ test("wardrobe-first journey, budget, saved look, sign-in-required try-on and re
   await page.getByLabel("Shoe size (EU)").selectOption("39");
   await page.getByRole("button", { name: "Save and continue" }).click();
   await page
-    .getByRole("button", { name: "Add reference photos later" })
+    .getByRole("button", { name: "Continue", exact: true })
     .click();
   await page.getByRole("button", { name: "Choose starter pieces" }).click();
   await expect(
@@ -148,7 +148,7 @@ test("direct photo upload, ownership review, persistence and 3D fallback", async
   await page.getByLabel("Shoe size (EU)").selectOption("39");
   await page.getByRole("button", { name: "Save and continue" }).click();
   await page
-    .getByRole("button", { name: "Add reference photos later" })
+    .getByRole("button", { name: "Continue", exact: true })
     .click();
   await page
     .getByLabel("Upload wardrobe photos")
@@ -240,7 +240,7 @@ test("inventory lists available products and requests sign-in for real previews"
   await page.getByLabel("Shoe size (EU)").selectOption("39");
   await page.getByRole("button", { name: "Save and continue" }).click();
   await page
-    .getByRole("button", { name: "Add reference photos later" })
+    .getByRole("button", { name: "Continue", exact: true })
     .click();
   await page.getByRole("button", { name: "Choose starter pieces" }).click();
   await page

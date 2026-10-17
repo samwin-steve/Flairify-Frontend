@@ -9,12 +9,17 @@ export class ApiError extends Error {
     this.name = "ApiError";
   }
 }
-export async function token() {
+export function sessionIdentity() {
+  // Compare the login's user object, not an ID token that can refresh mid-request.
   if (getApps().length && getAuth().currentUser)
-    return await getAuth().currentUser!.getIdToken();
+    return getAuth().currentUser!;
   return typeof window !== "undefined"
     ? localStorage.getItem("flairify-token")
     : null;
+}
+export async function token() {
+  const session = sessionIdentity();
+  return typeof session === "string" ? session : session?.getIdToken() ?? null;
 }
 export async function api<T = unknown>(
   path: string,

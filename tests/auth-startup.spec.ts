@@ -129,7 +129,7 @@ for (const complete of [true, false]) {
       await page.getByLabel("Clothing size", { exact: true }).selectOption("M");
       await page.getByLabel("Shoe size (EU)").selectOption("39");
       await page.getByRole("button", { name: "Save and continue" }).click();
-      await page.getByRole("button", { name: "Start shopping without photos" }).click();
+      await page.getByRole("button", { name: "Start shopping without photos", exact: true }).click();
     }
     await expect(page.getByRole("textbox", { name: "Message your stylist" })).toBeVisible();
     if (complete) expect(state.profileRequests).toBe(1);

@@ -62,7 +62,7 @@ test("direct multi-piece preview, conflict resolution, refresh and editable back
     const data = await result.json();
     await route.fulfill({ json: { ...data, try_on: true, firebase: {} } });
   });
-  await page.route("**/api/profile", async (route) => {
+  await page.route((url) => url.pathname === "/api/profile", async (route) => {
     const result = await route.fetch();
     const data = await result.json();
     if (route.request().method() === "PUT")
@@ -230,7 +230,7 @@ test("direct multi-piece preview, conflict resolution, refresh and editable back
   await expect(
     page.getByText("Preview complete", { exact: true }),
   ).toBeVisible();
-  await navigate(page, "Profile");
+  await page.getByRole("button", { name: "Open profile", exact: true }).click();
   await page.getByLabel("What should we call you?").fill("Preview tester");
   const checkbox = page.getByLabel(
     "Keep my generated outfits in the same background",
@@ -252,19 +252,19 @@ test("direct multi-piece preview, conflict resolution, refresh and editable back
   ).toEqual([]);
   await expect(checkbox).not.toBeChecked();
   await checkbox.check();
-  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(
     page.getByRole("status").filter({ hasText: "preferences are updated" }),
   ).toBeVisible();
   await page.reload();
-  await navigate(page, "Profile");
+  await page.getByRole("button", { name: "Open profile", exact: true }).click();
   await expect(checkbox).toBeChecked();
   await checkbox.uncheck();
-  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(
     page.getByRole("status").filter({ hasText: "preferences are updated" }),
   ).toBeVisible();
   await page.reload();
-  await navigate(page, "Profile");
+  await page.getByRole("button", { name: "Open profile", exact: true }).click();
   await expect(checkbox).not.toBeChecked();
 });

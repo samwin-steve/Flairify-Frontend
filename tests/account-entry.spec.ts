@@ -94,7 +94,7 @@ test("restored login completes preferences before entering the app, including a 
   await page.getByLabel("Shoe size (EU)").selectOption("40");
   await page.getByRole("button", { name: "Save and continue" }).click();
   await page
-    .getByRole("button", { name: "Start shopping without photos" })
+    .getByRole("button", { name: "Start shopping without photos", exact: true })
     .click();
   await expect(newChat(page)).toBeVisible();
   await expect(

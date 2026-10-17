@@ -54,7 +54,6 @@ import {
   SlidersHorizontal,
   Sparkles,
   Store as StoreIcon,
-  UserRound,
   WandSparkles,
   X,
 } from "lucide-react";
@@ -108,7 +107,6 @@ const navigation = [
   { id: "fitting", label: "Fitting Room", icon: WandSparkles },
   { id: "orders", label: "My Orders", icon: ShoppingBag },
   { id: "admin", label: "Seller Studio", icon: SellerIcon },
-  { id: "profile", label: "Profile", icon: UserRound },
 ];
 const prompts = [
   {
@@ -1022,22 +1020,6 @@ function Application() {
           </button>
         ))}
       </nav>
-      <div className="wardrobe-status">
-        <div>
-          <span className="circle-icon small">
-            <Shirt size={18} />
-          </span>
-          <strong>Your wardrobe</strong>
-          <span className="status-dot" />
-        </div>
-        <p>{confirmed.length} confirmed pieces</p>
-        <button
-          onClick={() => (ready ? changePage("wardrobe") : setOnboarding(true))}
-        >
-          {ready ? "View your wardrobe" : "Build your wardrobe"}
-          <ArrowRight size={15} />
-        </button>
-      </div>
       <div className="history">
         <div className="section-line">
           <span>YOUR CHATS</span>
@@ -1188,7 +1170,9 @@ function Application() {
               <Menu size={22} />
             </button>
             <span>
-              {navigation.find((n) => n.id === page)?.label || "Seller Studio"}
+              {page === "profile"
+                ? "Profile"
+                : navigation.find((n) => n.id === page)?.label || "Seller Studio"}
             </span>
           </div>
           <div className="header-actions">
@@ -1617,7 +1601,6 @@ function Application() {
                 <ProfileForm
                   profile={profile.data}
                   onSaved={() => {
-                    refresh();
                     setToast("Your preferences are updated.");
                   }}
                 />
@@ -1739,7 +1722,7 @@ function Application() {
           onOpenChange={setAddPhotos}
           wide
           title="A little more of your wardrobe"
-          description="Share only the photos you want to add."
+          description={null}
         >
           <UploadZone onDone={refresh} />
           <PhotoPicker config={config.data} onDone={refresh} />

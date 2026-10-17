@@ -19,7 +19,7 @@ test("saved shopping preferences, optional wardrobe, relevant distinct occasion 
   ).not.toBeChecked();
   await page.getByRole("button", { name: "Save and continue" }).click();
   await page
-    .getByRole("button", { name: "Start shopping without photos" })
+    .getByRole("button", { name: "Start shopping without photos", exact: true })
     .click();
   await expect(page.locator(".app-shell")).toBeVisible();
   await expect(
@@ -76,7 +76,7 @@ test("saved shopping preferences, optional wardrobe, relevant distinct occasion 
   await page
     .getByLabel("Pair recommendations with my wardrobe by default")
     .check();
-  await page.getByRole("button", { name: "Save and continue" }).click();
+  await page.getByRole("button", { name: "Save", exact: true }).click();
   await page.reload();
   await expect(
     page.getByRole("button", { name: "Shopping mode: With my wardrobe" }),

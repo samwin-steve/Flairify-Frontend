@@ -16,7 +16,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { api, post, put, del, uploadPhoto } from "@/lib/api";
+import { api, post, put, del, uploadPhoto, sessionIdentity } from "@/lib/api";
 import { pollingMilliseconds, CLOTHING_SIZES, SHOE_SIZES } from "@/lib/utils";
 import { shoppingReady } from "@/lib/shopping-session";
 import type {
@@ -87,10 +87,14 @@ export function ProfileForm({
     },
   });
   async function submit(data: Basics) {
+    const session = sessionIdentity();
     setBusy(true);
     setError("");
     try {
-      await put("/profile", {
+      // Prevent a pending profile read from replacing the confirmed save below.
+      await qc.cancelQueries({ queryKey: ["profile"] });
+      if (sessionIdentity() !== session) return;
+      const saved = await put<Profile>("/profile?complete_onboarding=true", {
         name: data.name,
         keep_background: data.keep_background,
         department: data.department,
@@ -108,13 +112,16 @@ export function ProfileForm({
         },
         onboarding_complete: profile.onboarding_complete,
       });
-      await post("/onboarding/complete");
-      qc.setQueryData(["profile"], await api<Profile>("/profile"));
+      // Sign-out or another login makes this response belong to an old session.
+      if (sessionIdentity() !== session) return;
+      // The save response contains the persisted preferences and completion state.
+      // Keep the account capabilities supplied by the initial profile read.
+      qc.setQueryData(["profile"], { ...profile, ...saved });
       onSaved();
     } catch (e) {
-      setError((e as Error).message);
+      if (sessionIdentity() === session) setError((e as Error).message);
     } finally {
-      setBusy(false);
+      if (sessionIdentity() === session) setBusy(false);
     }
   }
   return (
@@ -269,8 +276,7 @@ export function ProfileForm({
           "You can change these settings anytime in Profile & preferences."
         ) : (
           <>
-            Sizes come from you. Photos do not give us accurate body measurements.
-            Your department, sizes, store and budget are saved to your account.
+            Your preferences are saved to your account.
             Review them in Profile anytime and confirm the size again at checkout.
           </>
         )}
@@ -280,9 +286,10 @@ export function ProfileForm({
           {error}
         </p>
       )}
-      <Button disabled={busy}>
-        {busy ? <LoaderCircle className="spin" size={16} /> : null}Save and
-        continue <ArrowRight size={16} />
+      <Button disabled={busy} aria-busy={busy}>
+        {busy ? <LoaderCircle className="spin" size={16} /> : null}
+        {busy ? "Saving…" : initialSetup ? "Save and continue" : "Save"}
+        {initialSetup && <ArrowRight size={16} />}
       </Button>
     </form>
   );
@@ -360,7 +367,7 @@ export function UploadZone({
             : "Choose your " + kind.replace("_", " ") + " photo"}
         </strong>
         <span>Choose photos from your phone or computer</span>
-        <small>JPEG, PNG or WebP · Up to 10 MB each · 12 per batch</small>
+        <small>JPEG, PNG or WebP. Up to 10 MB each</small>
       </button>
       {files.map((f, i) => (
         <div className="upload-progress" key={i}>
@@ -387,6 +394,8 @@ export function PhotoPicker({
   config: Config;
   onDone: () => void;
 }) {
+  // Enable only after Google Photos OAuth setup and live import verification.
+  const googlePhotosReleased = false;
   const [status, setStatus] = useState("");
   const [pickerUri, setPickerUri] = useState("");
   const [busy, setBusy] = useState(false);
@@ -517,9 +526,18 @@ export function PhotoPicker({
   }
   return (
     <div className="picker">
-      <Button variant="outline" onClick={start} disabled={busy}>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={googlePhotosReleased ? start : undefined}
+        disabled={!googlePhotosReleased || busy}
+      >
         <span className="google-g">G</span>
-        {busy ? "Waiting for your selection…" : "Choose from Google Photos"}
+        {!googlePhotosReleased
+          ? "Google Photos · Coming soon"
+          : busy
+            ? "Waiting for your selection…"
+            : "Choose from Google Photos"}
       </Button>
       {busy && (
         <button className="text-link" onClick={cancel}>
@@ -537,7 +555,9 @@ export function PhotoPicker({
         </a>
       )}
       <p className="fine-print">
-        Separate permission. Only photos you explicitly select.
+        {googlePhotosReleased
+          ? "Separate permission. Only photos you explicitly select."
+          : "You can upload photos from your phone or computer."}
       </p>
       {status && (
         <p role="status" className="small-note">
@@ -884,10 +904,6 @@ export function WardrobeReview({
   return (
     <>
       <div className="section-line">
-        <span className="muted">
-          {items.filter((i) => i.confirmed).length} confirmed · {items.length}{" "}
-          pieces
-        </span>
         <Button variant="outline" size="sm" onClick={add}>
           <Plus size={15} />
           Add a garment
@@ -1098,12 +1114,12 @@ export function Onboarding({
         ))}
       </div>
       <main className="onboarding-content">
-        {step > 0 && <div className="eyebrow">A GOOD OUTFIT STARTS WITH YOU</div>}
+        {step > 1 && <div className="eyebrow">A GOOD OUTFIT STARTS WITH YOU</div>}
         <h1>
           {
             [
               "A little about you, before we begin.",
-              "A familiar face. Yours.",
+              "A good outfit starts with you.",
               "Your wardrobe, a new perspective.",
               "A few pieces. So many possibilities.",
             ][step]
@@ -1125,45 +1141,12 @@ export function Onboarding({
             <ProfileForm
               initialSetup
               profile={profile}
-              onSaved={() => {
-                qc.invalidateQueries({ queryKey: ["profile"] });
-                setStep(1);
-              }}
+              onSaved={() => setStep(1)}
             />
           </div>
         )}
         {step === 1 && (
           <>
-            <div className="notice">
-              <p>
-                Your shopping preferences are saved. You can add photos later.
-              </p>
-              <Button onClick={finish}>Start shopping without photos</Button>
-            </div>
-            {config.analysis === "gemini" &&
-              !profile.consent.ai_photo_processing && (
-                <label className="check-line notice">
-                  <input
-                    type="checkbox"
-                    checked={false}
-                    onChange={async (e) => {
-                      if (e.target.checked) {
-                        const { admin, demo, seller, ...data } = profile;
-                        await put("/profile", {
-                          ...data,
-                          consent: {
-                            ...data.consent,
-                            ai_photo_processing: true,
-                          },
-                        });
-                        qc.invalidateQueries({ queryKey: ["profile"] });
-                      }
-                    }}
-                  />
-                  Allow Google AI to automatically find visible garments in my
-                  outfit photos and create previews when I request them.
-                </label>
-              )}
             <div className="reference-grid">
               {["portrait", "full_body"].map((kind) => (
                 <div className="white-panel" key={kind}>
@@ -1206,26 +1189,50 @@ export function Onboarding({
             <div className="notice">
               <ShieldCheck size={20} />
               <p>
-                Your full-body photo is also checked for visible garments when
-                you allow Google AI processing. Reference photos stay private;
-                style previews are generated only on request. They do not
-                provide accurate body measurements. You can replace or delete
+                Reference photos stay private;
+                style previews are generated only on request. You can replace or delete
                 them anytime.
               </p>
             </div>
-            <Button
-              onClick={() =>
-                photoQuery.data?.photos.length ? process() : setStep(2)
-              }
-            >
-              {photoQuery.data?.photos.length
-                ? "Review detected garments"
-                : "Continue"}{" "}
-              <ArrowRight size={16} />
-            </Button>
-            <button className="text-link" onClick={() => setStep(2)}>
-              Add reference photos later
-            </button>
+            {config.analysis === "gemini" &&
+              !profile.consent.ai_photo_processing && (
+                <label className="check-line notice">
+                  <input
+                    type="checkbox"
+                    checked={false}
+                    onChange={async (e) => {
+                      if (e.target.checked) {
+                        const { admin, demo, seller, ...data } = profile;
+                        await put("/profile", {
+                          ...data,
+                          consent: {
+                            ...data.consent,
+                            ai_photo_processing: true,
+                          },
+                        });
+                        qc.invalidateQueries({ queryKey: ["profile"] });
+                      }
+                    }}
+                  />
+                  Allow Google AI to automatically find visible garments in my
+                  outfit photos and create previews when I request them.
+                </label>
+              )}
+            <div className="reference-actions">
+              <Button
+                onClick={() =>
+                  photoQuery.data?.photos.length ? process() : setStep(2)
+                }
+              >
+                {photoQuery.data?.photos.length
+                  ? "Review detected garments"
+                  : "Continue"}{" "}
+                <ArrowRight size={16} />
+              </Button>
+              <Button variant="outline" onClick={finish}>
+                Start shopping without photos
+              </Button>
+            </div>
           </>
         )}
         {step === 2 && (
