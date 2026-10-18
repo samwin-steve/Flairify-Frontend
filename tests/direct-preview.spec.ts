@@ -200,6 +200,7 @@ test("direct multi-piece preview, conflict resolution, refresh and editable back
     fullPage: true,
   });
   await button.click();
+  await page.getByRole("dialog").getByRole("button", { name: "Create preview", exact: true }).click();
   const preview = page.locator(".messages .chat-preview");
   await expect(preview.getByRole("status")).toHaveText("Creating your preview…");
   await expect(page.getByRole("heading", { name: "Fitting Room" })).toHaveCount(0);

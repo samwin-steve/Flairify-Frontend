@@ -35,7 +35,7 @@ test("direct mock purchase without wardrobe saves order and no payment", async (
   expect(await page.locator("body").innerText()).not.toMatch(
     /\b(?:demo|sample|mock)\b/i,
   );
-  await page.getByRole("button", { name: "Buy", exact: true }).first().click();
+  await page.locator(".look-card").first().getByRole("button", { name: /^Shop \d+ items?$/ }).click();
   await expect(
     page.getByRole("heading", { name: "Your checkout" }),
   ).toBeVisible();

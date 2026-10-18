@@ -74,11 +74,12 @@ test("wardrobe-first journey, budget, saved look, sign-in-required try-on and re
   await expect(look.locator('input[type="checkbox"]:checked')).toHaveCount(0);
   await look.getByRole("checkbox").first().check();
   await look.getByRole("button", { name: "See it on me", exact: true }).click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByRole("dialog").getByRole("button", { name: "Create preview", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Sign in to try on" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Buy", exact: true }).first().click();
+  await page.keyboard.press("Escape");
+  await look.getByRole("button", { name: /^Shop \d+ items?$/ }).click();
   await expect(
     page.getByText("Only new pieces from this look are included.", {
       exact: false,

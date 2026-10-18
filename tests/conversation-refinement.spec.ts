@@ -65,6 +65,7 @@ test("continue a chat, explain a look, replace only shoes and restore history", 
     chosen.title,
   );
   await expect(page.locator(".look-card")).toHaveCount(3);
+  await page.locator(".look-card").nth(1).getByLabel("More look options").click();
   await page
     .locator(".look-card")
     .nth(1)

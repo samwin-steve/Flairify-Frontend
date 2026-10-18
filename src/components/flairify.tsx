@@ -30,12 +30,14 @@ import {
   signOut,
 } from "firebase/auth";
 import {
+  ChartNoAxesCombined,
   ArrowDown,
   ArrowRight,
   Bookmark,
   Check,
   ChevronDown,
   ChevronRight,
+  Ellipsis,
   Clapperboard,
   Compass,
   Heart,
@@ -57,8 +59,9 @@ import {
   WandSparkles,
   X,
 } from "lucide-react";
-import { api, post, del } from "@/lib/api";
+import { api, post, put, del, syncMediaSession } from "@/lib/api";
 import { money } from "@/lib/utils";
+import { lookPresentation } from "@/lib/look-presentation";
 import type {
   Config,
   Conversation,
@@ -87,6 +90,7 @@ import {
 import { FittingRoom, PreviewCard } from "./fitting-room";
 import { Admin } from "./admin";
 import { Inventory } from "./inventory";
+import { Analytics } from "./analytics";
 import { Checkout, Orders } from "./checkout";
 import { ShoppingBag, Store as SellerIcon } from "lucide-react";
 import {
@@ -106,6 +110,7 @@ const navigation = [
   { id: "saved", label: "Saved Looks", icon: Bookmark },
   { id: "fitting", label: "Fitting Room", icon: WandSparkles },
   { id: "orders", label: "My Orders", icon: ShoppingBag },
+  { id: "analytics", label: "Analytics", icon: ChartNoAxesCombined },
   { id: "admin", label: "Seller Studio", icon: SellerIcon },
 ];
 const prompts = [
@@ -305,11 +310,16 @@ function Application() {
   });
   useEffect(() => {
     const existing = localStorage.getItem("flairify-token");
+    syncMediaSession();
     setSession(!!existing);
     const url = new URL(window.location.href);
     setStoreId(url.searchParams.get("store") || "");
     let cancelled = false;
     let unsubscribe = () => {};
+    const accountStorageChanged = (event: StorageEvent) => {
+      if (event.key === "flairify-token" || event.key === null) syncMediaSession();
+    };
+    window.addEventListener("storage", accountStorageChanged);
     loadFirebaseConfig()
       .then(({ firebase }) => {
         if (cancelled) return;
@@ -318,6 +328,7 @@ function Application() {
           setFirebaseReady(true);
           unsubscribe = onAuthStateChanged(getAuth(), (user) => {
             if (cancelled) return;
+            syncMediaSession();
             if (user) {
               setSession(true);
               qc.invalidateQueries();
@@ -331,6 +342,7 @@ function Application() {
       });
     return () => {
       cancelled = true;
+      window.removeEventListener("storage", accountStorageChanged);
       unsubscribe();
     };
   }, [qc]);
@@ -500,6 +512,7 @@ function Application() {
       if (getApps().length && getAuth().currentUser) await signOut(getAuth());
       const r = await post<{ token: string }>("/auth/demo");
       localStorage.setItem("flairify-token", r.token);
+      syncMediaSession();
       qc.clear();
       setSession(true);
       openChat();
@@ -522,6 +535,7 @@ function Application() {
         await createUserWithEmailAndPassword(getAuth(), email, password);
       else await signInWithEmailAndPassword(getAuth(), email, password);
       localStorage.removeItem("flairify-token");
+      syncMediaSession();
       openChat();
       setAuthOpen(false);
     });
@@ -532,6 +546,7 @@ function Application() {
     voice.stop(false);
     if (getApps().length) await signOut(getAuth());
     localStorage.removeItem("flairify-token");
+    syncMediaSession();
     sessionStorage.removeItem("flairify-sizes");
     sessionStorage.removeItem("flairify-department");
     setIncludeWardrobe(false);
@@ -688,7 +703,12 @@ function Application() {
       setToast("A good look, saved for later.");
     });
   }
-  async function requestTryOn(selected: PreviewSelection[], outfitId?: string, messageId?: string) {
+  async function requestTryOn(
+    selected: PreviewSelection[],
+    outfitId?: string,
+    messageId?: string,
+    background?: boolean,
+  ) {
     if (!selected.length) throw new Error("Select at least one garment first.");
     if (profile.data?.demo)
       throw new Error("Sign in to create a preview with your photo.");
@@ -712,11 +732,19 @@ function Application() {
       chatMessage,
       outfitId,
       selected,
-      profile.data?.keep_background,
+      background ?? profile.data?.keep_background,
     ]);
     const key = previewKeys.current.get(fingerprint) || crypto.randomUUID();
     previewKeys.current.set(fingerprint, key);
     try {
+      if (background !== undefined && background !== !!profile.data?.keep_background) {
+        const { admin, demo, seller, ...data } = profile.data!;
+        const savedProfile = await put<Profile>("/profile", {
+          ...data,
+          keep_background: background,
+        });
+        qc.setQueryData(["profile"], { ...profile.data, ...savedProfile });
+      }
       const job = await post<Job>("/generate/try_on", {
         selections: selected,
         conversation_id: chatId,
@@ -1338,8 +1366,8 @@ function Application() {
                                   !!saved.data?.looks.some((s) => s.id === o.id)
                                 }
                                 onSave={() => saveLook(o)}
-                                onTryOn={(selected) =>
-                                  requestTryOn(selected, o.id, m.id)
+                                onTryOn={(selected, background) =>
+                                  requestTryOn(selected, o.id, m.id, background)
                                 }
                                 keepBackground={!!profile.data?.keep_background}
                                 onSetup={() => changePage("profile")}
@@ -1546,8 +1574,8 @@ function Application() {
                           qc.invalidateQueries({ queryKey: ["saved"] });
                         })
                       }
-                      onTryOn={(selected) =>
-                        requestTryOn(selected, s.outfit.id)
+                      onTryOn={(selected, background) =>
+                        requestTryOn(selected, s.outfit.id, undefined, background)
                       }
                       keepBackground={!!profile.data?.keep_background}
                       onSetup={() => changePage("profile")}
@@ -1581,6 +1609,7 @@ function Application() {
             onSell={() => changePage("admin")}
           />
         )}
+        {page === "analytics" && <Analytics />}
         {page === "orders" && <Orders onShop={() => changePage("inventory")} />}
         {page === "fitting" && (
           <FittingRoom
@@ -1776,7 +1805,7 @@ function LookCard({
   index: number;
   isSaved: boolean;
   onSave: () => void;
-  onTryOn: (selected: PreviewSelection[]) => Promise<void>;
+  onTryOn: (selected: PreviewSelection[], background: boolean) => Promise<void>;
   onBuy: () => void;
   onSelect: () => void;
   onRefine?: () => void;
@@ -1795,6 +1824,13 @@ function LookCard({
   const [notice, setNotice] = useState("");
   const [previewError, setPreviewError] = useState("");
   const [generating, setGenerating] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewBackground, setPreviewBackground] = useState(keepBackground);
+  const presentation = lookPresentation(outfit);
+  const pieces = [
+    ...outfit.owned.map(wardrobePiece),
+    ...outfit.products.map(productPiece),
+  ];
   const lock = useRef(false);
   function toggle(piece: PreviewPiece) {
     const next = togglePiece(allSelected, piece);
@@ -1814,7 +1850,8 @@ function LookCard({
     setGenerating(true);
     setPreviewError("");
     try {
-      await onTryOn(selections(selected));
+      await onTryOn(selections(selected), previewBackground);
+      setPreviewOpen(false);
     } catch (e) {
       setPreviewError((e as Error).message);
     } finally {
@@ -1832,7 +1869,8 @@ function LookCard({
           onChange={() => toggle(piece)}
           aria-label={`Try on ${piece.name}`}
         />
-        {piece.available ? "Include in preview" : "Photo or stock unavailable"}
+        <span>{piece.name}</span>
+        {!piece.available && <small>Unavailable</small>}
       </label>
     );
   }
@@ -1844,15 +1882,34 @@ function LookCard({
             LOOK {String(index + 1).padStart(2, "0")} ·{" "}
             {outfit.occasion.toUpperCase()}
           </span>
-          <h3>{outfit.title}</h3>
+          <h3>{presentation.title}</h3>
         </div>
-        <button
-          className={"icon-button " + (isSaved ? "saved" : "")}
-          aria-label={isSaved ? "Remove saved look" : "Save look"}
-          onClick={onSave}
-        >
-          <Bookmark size={20} fill={isSaved ? "currentColor" : "none"} />
-        </button>
+        <div className="look-heading-actions">
+          <button
+            className={"icon-button " + (isSaved ? "saved" : "")}
+            aria-label={isSaved ? "Remove saved look" : "Save look"}
+            onClick={onSave}
+          >
+            <Bookmark size={20} fill={isSaved ? "currentColor" : "none"} />
+          </button>
+          <details className="look-options">
+            <summary className="icon-button" aria-label="More look options">
+              <Ellipsis size={20} />
+            </summary>
+            <div>
+              <button onClick={(e) => {
+                e.currentTarget.closest("details")?.removeAttribute("open");
+                onSelect();
+              }}>Outfit details</button>
+              {onRefine && (
+                <button onClick={(e) => {
+                  e.currentTarget.closest("details")?.removeAttribute("open");
+                  onRefine();
+                }}>Refine this look</button>
+              )}
+            </div>
+          </details>
+        </div>
       </div>
       <div className="look-pieces">
         {outfit.owned.map((w) => (
@@ -1862,7 +1919,6 @@ function LookCard({
               <span className="piece-label owned">Owned</span>
             </div>
             <strong>{w.name}</strong>
-            {checkbox(wardrobePiece(w))}
             <span>
               Already yours{w.generated_image ? " · AI-generated image" : ""}
             </span>
@@ -1875,64 +1931,29 @@ function LookCard({
               <span className="piece-label">New</span>
             </div>
             <strong>{p.name}</strong>
-            {checkbox(productPiece(p))}
             <span>
-              {money(p.price)} · {p.availability?.size}
+              <b>{money(p.price)}</b>
+              {p.availability?.size && <span>Size {p.availability.size}</span>}
             </span>
           </div>
         ))}
       </div>
-      <div className="preview-selection-info">
-        <p>
-          {selected.length
-            ? `${selected.length} selected for your preview.`
-            : "Tick the garments you want to try on."}{" "}
-          Compatible pieces are combined in one image.
-        </p>
-        <p className="fine-print">
-          {keepBackground
-            ? "Keep your photo’s background"
-            : "Plain white background"}{" "}
-          ·{" "}
-          <button className="text-link" onClick={onSetup}>
-            Change in Profile
-          </button>
-        </p>
-        {notice && <p role="status">{notice}</p>}
-        {previewError && (
-          <div className="notice">
-            <p role="alert" className="error">
-              {previewError}
-            </p>
-            <div className="button-row">
-              {onSignIn ? (
-                <Button size="sm" onClick={onSignIn}>
-                  Sign in to try on
-                </Button>
-              ) : (
-                <>
-                  <Button size="sm" variant="outline" onClick={onReference}>
-                    Manage reference photos
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={onSetup}>
-                    Open Profile settings
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-      <div className="look-explanation">
-        <span className="tiny-star">✧</span>
-        <p>{outfit.explanation}</p>
-      </div>
+      <p className="look-styling">{presentation.styling}</p>
+      <fieldset className="look-preview-selection">
+        <legend>
+          Preview pieces{selected.length ? ` · ${selected.length} selected` : ""}
+        </legend>
+        <div>
+          {pieces.map((piece) => <span key={pieceKey(piece)}>{checkbox(piece)}</span>)}
+        </div>
+      </fieldset>
+      {notice && <p role="status">{notice}</p>}
       {outfit.graph_evidence?.status === "ready" &&
         Object.values(outfit.graph_evidence.counts).some(
           (count) => count > 0,
         ) && (
-          <div className="wardrobe-connections">
-            <span>Connections in your wardrobe</span>
+          <details className="wardrobe-connections">
+            <summary>Connections in your wardrobe</summary>
             {outfit.products
               .filter(
                 (product) =>
@@ -1949,18 +1970,8 @@ function LookCard({
                   for this occasion.
                 </p>
               ))}
-          </div>
+          </details>
         )}
-      {onRefine && (
-        <button className="refine-look" onClick={onRefine}>
-          <Sparkles size={15} />
-          Refine this look
-          <span>
-            Change a colour, swap a piece, make it yours{" "}
-            <ArrowRight size={14} />
-          </span>
-        </button>
-      )}
       <div className="look-footer">
         <div>
           <span>New pieces total</span>
@@ -1968,8 +1979,11 @@ function LookCard({
         </div>
         <Button
           size="sm"
-          variant="outline"
-          onClick={generate}
+          onClick={() => {
+            setPreviewBackground(keepBackground);
+            setPreviewError("");
+            setPreviewOpen(true);
+          }}
           disabled={!selected.length || generating}
         >
           {generating ? (
@@ -1986,10 +2000,7 @@ function LookCard({
           disabled={!outfit.products.length}
         >
           <ShoppingBag size={15} />
-          Buy
-        </Button>
-        <Button size="sm" onClick={onSelect}>
-          Outfit details <ChevronRight size={15} />
+          Shop {outfit.products.length} {outfit.products.length === 1 ? "item" : "items"}
         </Button>
       </div>
       <details className="availability-details">
@@ -1997,13 +2008,20 @@ function LookCard({
           <MapPin size={14} />
           Stores, locations & delivery <ChevronDown size={14} />
         </summary>
+        {!outfit.products.length && <p>All pieces are already in your wardrobe.</p>}
         {outfit.products.map((p) => (
-          <div key={p.id}>
-            <strong>{p.name}</strong>
+          <div key={p.id} className="look-store">
+            <div className="look-store-heading">
+              <strong>{p.name}</strong>
+              <span className={"look-stock " + ((p.availability?.quantity || 0) > 0 && p.active !== false ? "in-stock" : "")}>
+                {(p.availability?.quantity || 0) > 0 && p.active !== false ? "Available" : "Unavailable"}
+              </span>
+            </div>
             <p>
-              {p.store?.name} · Size {p.availability?.size} ·{" "}
-              {p.availability?.quantity} available
+              {p.store?.name || "Store details unavailable"}
+              {p.availability?.size && ` · Size ${p.availability.size}`}
             </p>
+            {p.store?.address && <p>{p.store.address}</p>}
             {!p.sample && p.availability?.aisle && (
               <p>
                 Aisle {p.availability.aisle}
@@ -2014,6 +2032,41 @@ function LookCard({
           </div>
         ))}
       </details>
+      {previewOpen && (
+        <Modal
+          open
+          onOpenChange={(open) => { if (!generating) setPreviewOpen(open); }}
+          title="See it on me"
+          description="Your selected pieces, together in one preview."
+        >
+          <ul className="preview-piece-list">
+            {selected.map((p) => <li key={pieceKey(p)}>{p.name}</li>)}
+          </ul>
+          <label className="check-line background-preference">
+            <input type="checkbox" checked={previewBackground} disabled={generating}
+              onChange={(e) => setPreviewBackground(e.target.checked)} />
+            Keep my photo’s background
+          </label>
+          <p className="fine-print">Unchecked uses a plain white background. This choice is remembered for future previews.</p>
+          {previewError && (
+            <div className="notice">
+              <p role="alert" className="error">{previewError}</p>
+              <div className="button-row">
+                {onSignIn ? <Button size="sm" onClick={onSignIn}>Sign in to try on</Button> : (
+                  <>
+                    <Button size="sm" variant="outline" onClick={onReference}>Manage reference photos</Button>
+                    <Button size="sm" variant="outline" onClick={onSetup}>Open Profile settings</Button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+          <Button onClick={generate} disabled={generating || !selected.length}>
+            {generating && <LoaderCircle size={16} className="spin" />}
+            {generating ? "Starting preview…" : "Create preview"}
+          </Button>
+        </Modal>
+      )}
     </article>
   );
 }

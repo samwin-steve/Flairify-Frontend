@@ -1,3 +1,4 @@
+import { mediaCache } from "./media-cache";
 import { getAuth } from "firebase/auth";
 import { getApps } from "firebase/app";
 export class ApiError extends Error {
@@ -16,6 +17,32 @@ export function sessionIdentity() {
   return typeof window !== "undefined"
     ? localStorage.getItem("flairify-token")
     : null;
+}
+let guestIdentity: string | null = null;
+let guestNamespace = 0;
+export function syncMediaSession() {
+  const identity = sessionIdentity();
+  if (typeof identity === "string" && identity !== guestIdentity) guestNamespace++;
+  guestIdentity = typeof identity === "string" ? identity : null;
+  const scope = typeof identity === "string"
+    ? "guest:" + guestNamespace
+    : identity ? "firebase:" + identity.uid : null;
+  mediaCache.setAccount(scope);
+  return scope;
+}
+export function retainMedia(account: string, id: string, catalog: boolean) {
+  const identity = sessionIdentity();
+  if (syncMediaSession() !== account) return () => {};
+  return mediaCache.retain(account, id, catalog, async (signal) => {
+    const credential = typeof identity === "string" ? identity : await identity?.getIdToken();
+    if (signal.aborted) throw new Error("Media request cancelled");
+    const response = await fetch(
+      "/api/" + (catalog ? "catalog/media/" : "media/") + encodeURIComponent(id),
+      { headers: { Authorization: "Bearer " + credential }, signal },
+    );
+    if (!response.ok) throw new Error("Image unavailable");
+    return response.blob();
+  });
 }
 export async function token() {
   const session = sessionIdentity();
@@ -48,7 +75,12 @@ export const post = <T = unknown>(path: string, data: unknown = {}) =>
   api<T>(path, { method: "POST", body: JSON.stringify(data) });
 export const put = <T = unknown>(path: string, data: unknown) =>
   api<T>(path, { method: "PUT", body: JSON.stringify(data) });
-export const del = (path: string) => api(path, { method: "DELETE" });
+export async function del(path: string) {
+  const account = syncMediaSession();
+  const result = await api(path, { method: "DELETE" });
+  if (/^\/(photos|wardrobe|jobs)\//.test(path)) mediaCache.invalidatePrivate(account);
+  return result;
+}
 export async function mediaBlob(id: string, catalog = false) {
   const t = await token();
   const r = await fetch(

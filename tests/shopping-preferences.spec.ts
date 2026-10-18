@@ -95,7 +95,7 @@ test("saved shopping preferences, optional wardrobe, relevant distinct occasion 
   const latest = page.locator(".message.assistant").last();
   await expect(latest.locator(".look-card").first()).toBeVisible();
   await latest
-    .getByRole("button", { name: "Buy", exact: true })
+    .getByRole("button", { name: /^Shop \d+ items?$/ })
     .first()
     .click();
   const selection = page

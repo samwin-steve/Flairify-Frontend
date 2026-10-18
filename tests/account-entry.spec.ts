@@ -154,6 +154,7 @@ test("new chat wins over delayed history, resets look context and preserves sepa
     .filter({ visible: true });
   await old.click();
   await expect(page.locator(".message.assistant")).toHaveCount(1);
+  await page.locator(".look-card").first().getByLabel("More look options").click();
   await page
     .locator(".look-card")
     .first()

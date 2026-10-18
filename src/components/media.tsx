@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { ImageOff } from "lucide-react";
-import { mediaBlob } from "@/lib/api";
+import { mediaBlob, retainMedia, syncMediaSession } from "@/lib/api";
+import { EMPTY_MEDIA, mediaCache } from "@/lib/media-cache";
 export function Media({
   src,
   alt,
@@ -13,49 +14,42 @@ export function Media({
   className?: string;
   catalog?: boolean;
 }) {
-  const [url, setUrl] = useState(src.startsWith("media:") ? "" : src);
-  const [failed, setFailed] = useState(false);
+  const account = useSyncExternalStore(mediaCache.subscribe, () => mediaCache.account, () => null);
+  const revision = useSyncExternalStore(mediaCache.subscribe, () => mediaCache.revision, () => 0);
+  const id = src.startsWith("media:") ? src.slice(6) : "";
+  const image = useSyncExternalStore(
+    mediaCache.subscribe,
+    () => id ? mediaCache.snapshot(account, id, catalog) : EMPTY_MEDIA,
+    () => EMPTY_MEDIA,
+  );
+  const url = id ? image.url : src;
+  const [failedUrl, setFailedUrl] = useState("");
+  const failed = image.error || (!!url && failedUrl === url);
   useEffect(() => {
-    setFailed(false);
-    if (!src.startsWith("media:")) {
-      setUrl(src);
-      return;
-    }
-    setUrl("");
-    let active = true;
-    let blob = "";
-    mediaBlob(src.slice(6), catalog)
-      .then((v) => {
-        blob = v;
-        if (active) {
-          setFailed(false);
-          setUrl(v);
-        } else URL.revokeObjectURL(v);
-      })
-      .catch(() => {
-        if (active) setFailed(true);
-      });
-    return () => {
-      active = false;
-      if (blob) URL.revokeObjectURL(blob);
-    };
-  }, [src, catalog]);
+    if (!id) return;
+    syncMediaSession();
+    if (account) return retainMedia(account, id, catalog);
+  }, [id, catalog, account, revision]);
   return url && !failed ? (
     <img
       src={url}
       alt={alt}
       className={className}
       loading="lazy"
-      onError={() => setFailed(true)}
+      onError={() => setFailedUrl(url)}
     />
   ) : (
     <div
       className={"media-placeholder " + className}
-      role="img"
+      role={failed ? undefined : "img"}
       aria-label={alt}
     >
       <ImageOff size={26} />
       <span>{failed ? "Image unavailable" : "Your garment"}</span>
+      {failed && id && <button type="button" className="text-link" onClick={() => {
+        setFailedUrl("");
+        mediaCache.invalidate(account, id, catalog);
+      }}>Try again</button>}
     </div>
   );
 }
