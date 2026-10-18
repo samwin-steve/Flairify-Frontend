@@ -1,4 +1,5 @@
 "use client";
+import { Skeleton, LoadingDots } from "./ui/loading";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { WelcomeFairyCursor } from "./welcome-fairy-cursor";
 import { StylistComposer } from "./stylist-composer";
@@ -881,7 +882,7 @@ function Application() {
                   }
                   disabled={busy || boot || (!firebaseReady && config.isPending)}
                 >
-                  {busy ? <LoaderCircle className="spin" size={18} /> : null}
+                  {busy ? <LoadingDots /> : null}
                   Find my look <ArrowRight size={18} />
                 </Button>
               </div>
@@ -919,7 +920,7 @@ function Application() {
           </div>
           <section className="how-it-works" id="how-it-works">
             <div>
-              <h2>Your next look, made personal.</h2>
+              <h2>Find an outfit</h2>
             </div>
             {[
               {
@@ -1408,9 +1409,9 @@ function Application() {
                         aria-live="polite"
                       >
                         <span className="stylist-avatar">✧</span>
-                        <LoaderCircle size={16} className="spin" />
+                        <LoadingDots />
                         {streamStatus ||
-                          "Finding suitable options for your occasion…"}
+                          "Finding outfits…"}
                       </div>
                     )}
                     <div ref={bottom} />
@@ -1522,7 +1523,7 @@ function Application() {
             <>
               {pendingJobs.map((j) => (
                 <div className="notice" role="status" key={j.id}>
-                  <LoaderCircle className="spin" size={18} />
+                  <LoadingDots />
                   {j.stage}
                 </div>
               ))}
@@ -1534,10 +1535,11 @@ function Application() {
               duplicates={wardrobe.data?.duplicates || []}
               onRefresh={refresh}
             />
-            {!wardrobe.data?.items.length && (
+            {wardrobe.isLoading && <Skeleton label="Loading wardrobe" cards={6} />}
+            {!wardrobe.isLoading && !wardrobe.data?.items.length && (
               <div className="empty-state">
                 <Shirt size={32} />
-                <h2>Let’s start with your favourites.</h2>
+                <h2>Your wardrobe is empty</h2>
                 <p>A few outfit photos are enough to begin.</p>
                 <Button onClick={() => setOnboarding(true)}>
                   Build my wardrobe
@@ -1549,7 +1551,7 @@ function Application() {
         {page === "saved" && (
           <main className="page-content">
             <h1>Saved looks</h1>
-            {!saved.data?.looks.length ? (
+            {saved.isLoading ? <Skeleton label="Loading saved looks" cards={3} /> : !saved.data?.looks.length ? (
               <div className="empty-state">
                 <Bookmark size={32} />
                 <h2>No saved looks yet</h2>
@@ -1750,7 +1752,7 @@ function Application() {
           open
           onOpenChange={setAddPhotos}
           wide
-          title="A little more of your wardrobe"
+          title="Add wardrobe photos"
           description={null}
         >
           <UploadZone onDone={refresh} />
@@ -1987,7 +1989,7 @@ function LookCard({
           disabled={!selected.length || generating}
         >
           {generating ? (
-            <LoaderCircle size={15} className="spin" />
+            <LoadingDots />
           ) : (
             <WandSparkles size={15} />
           )}
@@ -2062,7 +2064,7 @@ function LookCard({
             </div>
           )}
           <Button onClick={generate} disabled={generating || !selected.length}>
-            {generating && <LoaderCircle size={16} className="spin" />}
+            {generating && <LoadingDots />}
             {generating ? "Starting preview…" : "Create preview"}
           </Button>
         </Modal>

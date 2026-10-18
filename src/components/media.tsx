@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { Skeleton } from "./ui/loading";
 import { ImageOff } from "lucide-react";
 import { mediaBlob, retainMedia, syncMediaSession } from "@/lib/api";
 import { EMPTY_MEDIA, mediaCache } from "@/lib/media-cache";
@@ -24,6 +25,7 @@ export function Media({
   );
   const url = id ? image.url : src;
   const [failedUrl, setFailedUrl] = useState("");
+  const [loadedUrl, setLoadedUrl] = useState("");
   const failed = image.error || (!!url && failedUrl === url);
   useEffect(() => {
     if (!id) return;
@@ -34,18 +36,19 @@ export function Media({
     <img
       src={url}
       alt={alt}
-      className={className}
+      className={className + (loadedUrl !== url ? " shimmer media-loading" : "")}
+      onLoad={() => setLoadedUrl(url)}
       loading="lazy"
       onError={() => setFailedUrl(url)}
     />
   ) : (
     <div
-      className={"media-placeholder " + className}
-      role={failed ? undefined : "img"}
-      aria-label={alt}
+      className={"media-placeholder " + className + (!failed && src ? " shimmer" : "")}
+      role={failed ? undefined : src ? "status" : "img"}
+      aria-label={!failed && src ? `Loading ${alt}` : alt}
+      aria-busy={!failed && !!src}
     >
-      <ImageOff size={26} />
-      <span>{failed ? "Image unavailable" : "Your garment"}</span>
+      {failed || !src ? <><ImageOff size={26} /><span>{failed ? "Image unavailable" : "No image"}</span></> : <span className="sr-only">Loading image</span>}
       {failed && id && <button type="button" className="text-link" onClick={() => {
         setFailedUrl("");
         mediaCache.invalidate(account, id, catalog);
@@ -54,15 +57,16 @@ export function Media({
   );
 }
 export function PrivateVideo({ id }: { id: string }) {
-  const [url, setUrl] = useState("");
+  const [video, setVideo] = useState({ id: "", url: "", error: false });
+  const url = video.id === id ? video.url : "";
   useEffect(() => {
     let blob = "";
     let active = true;
     mediaBlob(id).then((u) => {
       blob = u;
-      if (active) setUrl(u);
+      if (active) setVideo({ id, url: u, error: false });
       else URL.revokeObjectURL(u);
-    });
+    }).catch(() => { if (active) setVideo({ id, url: "", error: true }); });
     return () => {
       active = false;
       if (blob) URL.revokeObjectURL(blob);
@@ -76,6 +80,6 @@ export function PrivateVideo({ id }: { id: string }) {
       </a>
     </div>
   ) : (
-    <p>Loading your private video…</p>
+    video.id === id && video.error ? <p role="alert">Video unavailable. Try reopening this preview.</p> : <Skeleton label="Loading video" media />
   );
 }

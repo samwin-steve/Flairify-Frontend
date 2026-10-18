@@ -1,4 +1,5 @@
 "use client";
+import { Skeleton } from "./ui/loading";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -155,7 +156,7 @@ export function Admin({
     return (
       <main className="page-content">
         <span className="eyebrow">FOR OWNERS & SELLERS</span>
-        <h1>Seller Studio.</h1>
+        <h1>Seller Studio</h1>
         <p className="page-subtitle">
           Bring your clothes into the conversation.
         </p>
@@ -287,6 +288,7 @@ export function Admin({
           {data.error.message}
         </p>
       )}
+      {data.isLoading && <Skeleton label="Loading listings" cards={3} />}
       <div className="inventory-grid seller-products">
         {data.data?.products.map((p) => (
           <article className="white-panel inventory-card" key={p.id}>
@@ -356,7 +358,7 @@ export function Admin({
       </div>
       {!data.isLoading && !data.data?.products.length && (
         <div className="empty-state">
-          <h2>Make room for your first piece.</h2>
+          <h2>No listings yet</h2>
           <p>A clear photo and accurate sizes make a useful listing.</p>
         </div>
       )}
@@ -446,6 +448,7 @@ export function Admin({
           {incoming.error.message}
         </p>
       )}
+      {incoming.isLoading && <Skeleton label="Loading received orders" />}
       <OrderList orders={incoming.data?.orders || []} seller={!profile.admin} />
       {!incoming.isLoading && !incoming.data?.orders.length && (
         <p className="small-note">No orders yet.</p>
@@ -626,7 +629,7 @@ function ProductEditor({
             </label>
           </div>
           {progress !== null && (
-            <p role="status">Uploading photo: {progress}%</p>
+            <div className="upload-progress" role="status"><span>Uploading photo: {progress}%</span><progress aria-label="Photo upload" value={progress} max={100} /></div>
           )}
           <div className="form-grid">
             <label className="field">

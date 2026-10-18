@@ -1,4 +1,5 @@
 "use client";
+import { LoadingDots } from "./ui/loading";
 
 import { useEffect, useRef, useState } from "react";
 import {
@@ -6,7 +7,6 @@ import {
   Check,
   ChevronDown,
   ImagePlus,
-  LoaderCircle,
   Mic,
   Shirt,
   ShoppingBag,
@@ -95,7 +95,7 @@ export function StylistComposer({
           focus
             ? "What would you like to change?"
             : ready
-              ? "Ask for a look, a new variation, or a little advice…"
+              ? "Ask for an outfit or styling advice…"
               : "Save your shopping preferences to start…"
         }
         value={input}
@@ -213,7 +213,7 @@ export function StylistComposer({
           disabled={busy || !input.trim()}
         >
           {busy ? (
-            <LoaderCircle size={20} className="spin" />
+            <LoadingDots />
           ) : (
             <ArrowUp size={20} />
           )}

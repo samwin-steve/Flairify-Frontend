@@ -1,4 +1,5 @@
 "use client";
+import { LoadingDots } from "./ui/loading";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -10,7 +11,6 @@ import {
   CheckCheck,
   CloudUpload,
   ImagePlus,
-  LoaderCircle,
   Plus,
   ShieldCheck,
   Trash2,
@@ -287,7 +287,7 @@ export function ProfileForm({
         </p>
       )}
       <Button disabled={busy} aria-busy={busy}>
-        {busy ? <LoaderCircle className="spin" size={16} /> : null}
+        {busy ? <LoadingDots /> : null}
         {busy ? "Saving…" : initialSetup ? "Save and continue" : "Save"}
         {initialSetup && <ArrowRight size={16} />}
       </Button>
@@ -363,7 +363,7 @@ export function UploadZone({
         </span>
         <strong>
           {kind === "wardrobe"
-            ? "Drop a little of your wardrobe here"
+            ? "Upload wardrobe photos"
             : "Choose your " + kind.replace("_", " ") + " photo"}
         </strong>
         <span>Choose photos from your phone or computer</span>
@@ -1121,7 +1121,7 @@ export function Onboarding({
               "A little about you, before we begin.",
               "A good outfit starts with you.",
               "Your wardrobe, a new perspective.",
-              "A few pieces. So many possibilities.",
+              "Review your wardrobe",
             ][step]
           }
         </h1>
@@ -1283,8 +1283,8 @@ export function Onboarding({
           <>
             {active.map((j) => (
               <div className="notice" role="status" key={j.id}>
-                <LoaderCircle className="spin" size={20} />
-                <span>{j.stage} — this page will update when ready.</span>
+                <LoadingDots />
+                <span>{j.stage}</span>
               </div>
             ))}
             {jobQuery.data?.jobs

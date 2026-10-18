@@ -1,4 +1,5 @@
 "use client";
+import { Skeleton } from "./ui/loading";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -6,7 +7,6 @@ import {
   Clapperboard,
   ImagePlus,
   Download,
-  LoaderCircle,
   RotateCcw,
   ShoppingBag,
   Trash2,
@@ -75,10 +75,7 @@ function ModelViewer() {
           }}
         />
       ) : (
-        <div className="viewer-loading">
-          <LoaderCircle className="spin" />
-          Loading 3D viewer…
-        </div>
+        <Skeleton label="Loading 3D viewer" media />
       )}
       {error ? (
         <p role="alert" className="error">
@@ -183,12 +180,13 @@ export function FittingRoom({
       )}
       {tab === "previews" && (
         <>
-          {!list.length && (
+          {jobs.isLoading && <Skeleton label="Loading previews" cards={2} />}
+          {!jobs.isLoading && !list.length && (
             <div className="empty-state">
               <div className="circle-icon">
                 <ImagePlus size={30} />
               </div>
-              <h2>Your next look starts here.</h2>
+              <h2>No previews yet</h2>
               <p>
                 Choose “See it on me” on a stylist recommendation.
                 <br />
@@ -308,7 +306,7 @@ function PreviewShopping({
     <section className="preview-shopping" aria-label="Shop this look">
       <h4>Shop this look</h4>
       {shopping.isLoading && (
-        <p role="status">Finding your recommended items…</p>
+        <Skeleton label="Loading recommended items" />
       )}
       {shopping.error && (
         <p role="alert" className="error">
@@ -398,10 +396,7 @@ export function PreviewCard({ job: j, onBuy, compact = false }: {
       </div>
       {!compact && <h3>{j.stage}</h3>}
       {["queued", "running"].includes(j.status) && (
-        <p className="small-note" role="status" aria-live="polite">
-          <LoaderCircle size={17} className="spin" />
-          {compact ? "Creating your preview…" : "You can leave and come back. This job is saved."}
-        </p>
+        <Skeleton label={compact ? "Creating your preview" : j.stage || "Creating preview"} media />
       )}
       {j.error && (
         <p className="error" role="alert">

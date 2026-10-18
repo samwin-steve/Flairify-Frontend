@@ -103,5 +103,29 @@ test("deleting a preview removes its cached image", async ({ page }) => {
   await expect(page.getByAltText("AI-generated style visualization")).toHaveCount(0);
   await navigate(page, "Fitting Room");
   await expect(page.getByAltText("AI-generated style visualization")).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Your next look starts here." })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "No previews yet" })).toBeVisible();
+});
+
+test("image downloads show shimmer and failed images offer retry", async ({ page }) => {
+  await fixture(page);
+  await expect(page.getByAltText("AI-generated style visualization")).toBeVisible();
+  let finish!: () => void;
+  const gate = new Promise<void>((resolve) => { finish = resolve; });
+  let fail = true;
+  await page.route("**/api/media/shared-image", async (route) => {
+    await gate;
+    await route.fulfill(fail ? { status: 500, json: { detail: "Unavailable" } } : { path: "public/images/hero.jpg", contentType: "image/jpeg" });
+  });
+  await page.reload();
+  const placeholder = page.getByRole("status", { name: "Loading AI-generated style visualization" });
+  await expect(placeholder).toBeVisible();
+  await expect(placeholder).toHaveClass(/shimmer/);
+  await expect(page.getByText("Your garment", { exact: true })).toHaveCount(0);
+  await page.screenshot({ path: `test-results/${test.info().project.name}-image-loading.png` });
+  finish();
+  await expect(page.locator("#preview-preview").getByText("Image unavailable", { exact: true })).toBeVisible();
+  fail = false;
+  await page.locator("#preview-preview").getByRole("button", { name: "Try again", exact: true }).click();
+  await expect(page.getByAltText("AI-generated style visualization")).toBeVisible();
+  await expect(placeholder).toHaveCount(0);
 });

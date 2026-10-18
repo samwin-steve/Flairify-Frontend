@@ -1,4 +1,5 @@
 "use client";
+import { Skeleton } from "./ui/loading";
 import { useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, WandSparkles, MapPin, ShoppingBag, Plus } from "lucide-react";
@@ -88,7 +89,7 @@ export function Inventory({
               setQuery(e.target.value);
               setVisibleCount(24);
             }}
-            placeholder="A shirt, a jacket, a fresh possibility…"
+            placeholder="Search shirts, jackets and more…"
           />
         </label>
         <label className="field">
@@ -143,7 +144,7 @@ export function Inventory({
           In stock only
         </label>
       </div>
-      {catalog.isLoading && <p role="status">Loading the inventory…</p>}
+      {catalog.isLoading && <Skeleton label="Loading inventory" cards={6} />}
       {catalog.error && (
         <p role="alert" className="error">
           {catalog.error.message}
@@ -258,7 +259,7 @@ export function Inventory({
       )}
       {!catalog.isLoading && !products.length && (
         <div className="empty-state">
-          <h2>No pieces match yet.</h2>
+          <h2>No matching items</h2>
           <p>Try another category or search term.</p>
         </div>
       )}

@@ -1,4 +1,5 @@
 "use client";
+import { Skeleton } from "./ui/loading";
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -39,7 +40,7 @@ export function CatalogueMetadata({
       title="Styling details"
       description={name}
     >
-      {data.isLoading && <p role="status">Loading product details…</p>}
+      {data.isLoading && <Skeleton label="Loading product details" />}
       {data.error && (
         <p className="error" role="alert">
           {data.error.message}

@@ -1,4 +1,5 @@
 "use client";
+import { Skeleton } from "./ui/loading";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ShoppingBag, PackageCheck } from "lucide-react";
@@ -135,7 +136,7 @@ export function Checkout({
           stay in your wardrobe.
         </p>
       )}
-      {catalog.isLoading && <p role="status">Checking the latest inventory…</p>}
+      {catalog.isLoading && <Skeleton label="Checking inventory" />}
       {catalog.error && (
         <p role="alert" className="error">
           {catalog.error.message}
@@ -370,7 +371,7 @@ export function Orders({ onShop }: { onShop: () => void }) {
   return (
     <main className="page-content">
       <h1>My orders</h1>
-      {orders.isLoading && <p role="status">Loading your orders…</p>}
+      {orders.isLoading && <Skeleton label="Loading orders" cards={3} />}
       {orders.error && (
         <p className="error" role="alert">
           {orders.error.message}

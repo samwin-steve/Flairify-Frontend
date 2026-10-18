@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bookmark, Heart, LoaderCircle, RefreshCw, ShoppingBag, Sparkles, WandSparkles } from "lucide-react";
+import { Bookmark, Heart, RefreshCw, ShoppingBag, Sparkles, WandSparkles } from "lucide-react";
 import styles from "./analytics.module.css";
 
 // Deterministic sample cohorts until production analytics are available.
 const cohorts = {
   all: { label: "All stores", counts: [320, 260, 76, 40], responses: 200, happy: 168, saved: 118, tried: 92 },
-  studio: { label: "Studio — demo", counts: [180, 150, 48, 26], responses: 112, happy: 96, saved: 70, tried: 56 },
-  everyday: { label: "Everyday — demo", counts: [140, 110, 28, 14], responses: 88, happy: 72, saved: 48, tried: 36 },
+  studio: { label: "Studio (demo)", counts: [180, 150, 48, 26], responses: 112, happy: 96, saved: 70, tried: 56 },
+  everyday: { label: "Everyday (demo)", counts: [140, 110, 28, 14], responses: 88, happy: 72, saved: 48, tried: 36 },
 };
 const stageNames = ["Asked stylist", "Options found", "Checkout opened", "Demo order"];
 const dropNames = ["without options", "without checkout", "without an order"];
@@ -61,7 +61,7 @@ export function Analytics() {
           <button className={styles.refresh} disabled={loading} onClick={() => { setLoading(true); setReportVersion((n) => n + 1); }} aria-label="Refresh daily report"><RefreshCw size={16} /> <span>Refresh</span></button>
         </div>
         <div className={styles.reportBody} aria-live="polite">
-          {loading ? <div role="status" className={styles.loading}><span><LoaderCircle size={16} className={styles.spin} />Preparing summary…</span><div className={styles.skeleton} /><div className={styles.skeleton} /><div className={styles.skeleton} /></div> : <><p>Shoppers are mostly looking for summer outfits around ₹1,500–₹3,000. Lightweight fabrics and relaxed fits come up often, especially for work and travel.</p><p className={styles.reportDetail}>Cotton shirts, linen trousers and easy-to-layer separates are recurring requests. Shoppers want pieces they can wear to the office and reuse on weekends.</p><div className={styles.action}><h3>Suggested action</h3><p>Feature summer workwear within this price range.</p><p className={styles.actionDetail}>Start with breathable shirts and relaxed trousers. Show complete outfit prices and available sizes upfront.</p></div></>}
+          {loading ? <div role="status" className={styles.loading}><span>Preparing summary…</span><div className={styles.skeleton} /><div className={styles.skeleton} /><div className={styles.skeleton} /></div> : <><p>Shoppers are mostly looking for summer outfits around ₹1,500–₹3,000. Lightweight fabrics and relaxed fits come up often, especially for work and travel.</p><p className={styles.reportDetail}>Cotton shirts, linen trousers and easy-to-layer separates are recurring requests. Shoppers want pieces they can wear to the office and reuse on weekends.</p><div className={styles.action}><h3>Suggested action</h3><p>Feature summer workwear within this price range.</p><p className={styles.actionDetail}>Start with breathable shirts and relaxed trousers. Show complete outfit prices and available sizes upfront.</p></div></>}
         </div>
       </section>
 
