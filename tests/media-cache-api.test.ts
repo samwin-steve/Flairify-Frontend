@@ -4,7 +4,6 @@ vi.mock("firebase/app", () => ({ getApps: () => [{}] }));
 vi.mock("firebase/auth", () => ({ getAuth: () => auth }));
 import { del, retainMedia, syncMediaSession } from "../src/lib/api";
 import { mediaCache } from "../src/lib/media-cache";
-const settle = async () => { for (let i = 0; i < 15; i++) await Promise.resolve(); };
 afterEach(() => { mediaCache.setAccount(null); auth.currentUser = null; vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it("uses the stable UID while access tokens rotate, and clears when account changes", async () => {
@@ -12,7 +11,7 @@ it("uses the stable UID while access tokens rotate, and clears when account chan
   vi.stubGlobal("fetch", vi.fn(async () => new Response(new Blob(["image"]))));
   const account = syncMediaSession()!;
   const release = retainMedia(account, "image", false);
-  await settle();
+  await vi.waitFor(() => expect(mediaCache.snapshot(account, "image").url).toBeTruthy());
   const url = mediaCache.snapshot(account, "image").url;
   expect(url).toBeTruthy();
   auth.currentUser = { uid: "one", getIdToken: async () => "token2" };
@@ -30,7 +29,7 @@ it("invalidates private media only after successful cascading deletion", async (
   vi.stubGlobal("fetch", fetcher);
   const account = syncMediaSession()!;
   retainMedia(account, "image", false);
-  await settle();
+  await vi.waitFor(() => expect(mediaCache.snapshot(account, "image").url).toBeTruthy());
   fetcher.mockImplementationOnce(async () => new Response(JSON.stringify({ detail: "Failed" }), { status: 500 }));
   await expect(del("/photos/photo")).rejects.toThrow("Failed");
   expect(mediaCache.snapshot(account, "image").url).toBeTruthy();

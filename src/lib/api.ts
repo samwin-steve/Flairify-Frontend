@@ -1,4 +1,5 @@
-import { mediaCache } from "./media-cache";
+import { mediaCache, type MediaVariant } from "./media-cache";
+import { mediaDownloads } from "./media-download-queue";
 import { getAuth } from "firebase/auth";
 import { getApps } from "firebase/app";
 export class ApiError extends Error {
@@ -30,19 +31,20 @@ export function syncMediaSession() {
   mediaCache.setAccount(scope);
   return scope;
 }
-export function retainMedia(account: string, id: string, catalog: boolean) {
+export function retainMedia(account: string, id: string, catalog: boolean, variant: MediaVariant = "original") {
   const identity = sessionIdentity();
   if (syncMediaSession() !== account) return () => {};
-  return mediaCache.retain(account, id, catalog, async (signal) => {
+  return mediaCache.retain(account, id, catalog, (signal) => mediaDownloads.run(signal, async () => {
     const credential = typeof identity === "string" ? identity : await identity?.getIdToken();
     if (signal.aborted) throw new Error("Media request cancelled");
     const response = await fetch(
-      "/api/" + (catalog ? "catalog/media/" : "media/") + encodeURIComponent(id),
+      "/api/" + (catalog ? "catalog/media/" : "media/") + encodeURIComponent(id) +
+        (variant === "original" ? "" : `?width=${variant === "thumb" ? 384 : 768}`),
       { headers: { Authorization: "Bearer " + credential }, signal },
     );
     if (!response.ok) throw new Error("Image unavailable");
     return response.blob();
-  });
+  }), variant);
 }
 export async function token() {
   const session = sessionIdentity();

@@ -1,26 +1,52 @@
 "use client";
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import Image from "next/image";
 import { Skeleton } from "./ui/loading";
 import { ImageOff } from "lucide-react";
 import { mediaBlob, retainMedia, syncMediaSession } from "@/lib/api";
-import { EMPTY_MEDIA, mediaCache } from "@/lib/media-cache";
+import { EMPTY_MEDIA, mediaCache, type MediaVariant } from "@/lib/media-cache";
 export function Media({
   src,
   alt,
   className = "",
   catalog = false,
+  variant = catalog ? "thumb" : "detail",
+  priority = false,
 }: {
   src: string;
   alt: string;
   className?: string;
   catalog?: boolean;
+  variant?: MediaVariant;
+  priority?: boolean;
 }) {
+  const [target, setTarget] = useState<Element | null>(null);
+  const bind = useCallback((node: HTMLImageElement | HTMLDivElement | null) => {
+    if (node) setTarget(node);
+  }, []);
+  const [nearViewport, setNearViewport] = useState(false);
+  const shouldLoad = priority || nearViewport;
+  useEffect(() => {
+    if (shouldLoad || !target) return;
+    if (!("IntersectionObserver" in window)) {
+      setNearViewport(true);
+      return;
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setNearViewport(true);
+        observer.disconnect();
+      }
+    }, { rootMargin: "300px" });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [target, shouldLoad]);
   const account = useSyncExternalStore(mediaCache.subscribe, () => mediaCache.account, () => null);
   const revision = useSyncExternalStore(mediaCache.subscribe, () => mediaCache.revision, () => 0);
   const id = src.startsWith("media:") ? src.slice(6) : "";
   const image = useSyncExternalStore(
     mediaCache.subscribe,
-    () => id ? mediaCache.snapshot(account, id, catalog) : EMPTY_MEDIA,
+    () => id ? mediaCache.snapshot(account, id, catalog, variant) : EMPTY_MEDIA,
     () => EMPTY_MEDIA,
   );
   const url = id ? image.url : src;
@@ -28,21 +54,27 @@ export function Media({
   const [loadedUrl, setLoadedUrl] = useState("");
   const failed = image.error || (!!url && failedUrl === url);
   useEffect(() => {
-    if (!id) return;
+    if (!id || !shouldLoad) return;
     syncMediaSession();
-    if (account) return retainMedia(account, id, catalog);
-  }, [id, catalog, account, revision]);
+    if (account) return retainMedia(account, id, catalog, variant);
+  }, [id, catalog, account, revision, variant, shouldLoad]);
+  const imageProps = {
+    ref: bind,
+    alt,
+    className: className + (loadedUrl !== url ? " shimmer media-loading" : ""),
+    onLoad: () => setLoadedUrl(url),
+    loading: priority ? "eager" as const : "lazy" as const,
+    decoding: "async" as const,
+    onError: () => setFailedUrl(url),
+  };
   return url && !failed ? (
-    <img
-      src={url}
-      alt={alt}
-      className={className + (loadedUrl !== url ? " shimmer media-loading" : "")}
-      onLoad={() => setLoadedUrl(url)}
-      loading="lazy"
-      onError={() => setFailedUrl(url)}
-    />
+    src.startsWith("/images/") ? (
+      <Image {...imageProps} src={src} width={768} height={1024}
+        sizes="(max-width: 640px) 90vw, (max-width: 1100px) 45vw, 320px" />
+    ) : <img {...imageProps} src={url} />
   ) : (
     <div
+      ref={bind}
       className={"media-placeholder " + className + (!failed && src ? " shimmer" : "")}
       role={failed ? undefined : src ? "status" : "img"}
       aria-label={!failed && src ? `Loading ${alt}` : alt}

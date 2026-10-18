@@ -19,6 +19,7 @@ async function proxy(
     "content-type",
     "x-photos-token",
     "accept",
+    "if-none-match",
   ]) {
     const v = req.headers.get(key);
     if (v) headers.set(key, v);
@@ -40,6 +41,17 @@ async function proxy(
     for (const key of ["content-type", "content-disposition"]) {
       const v = response.headers.get(key);
       if (v) out.set(key, v);
+    }
+    const imageRoute = req.method === "GET" && (
+      (path[0] === "media" && path.length === 2) ||
+      (path[0] === "catalog" && path[1] === "media" && path.length === 3)
+    );
+    if (imageRoute) {
+      // Browser-only caching; the server proxy still never caches authenticated bytes.
+      for (const key of ["cache-control", "etag", "vary", "x-content-type-options"]) {
+        const value = response.headers.get(key);
+        if (value) out.set(key, value);
+      }
     }
     return new Response(response.body, {
       status: response.status,

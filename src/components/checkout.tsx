@@ -39,8 +39,8 @@ export function Checkout({
   const [error, setError] = useState("");
   const [requestKey, setRequestKey] = useState(() => crypto.randomUUID());
   const catalog = useQuery({
-    queryKey: ["checkout-catalog"],
-    queryFn: () => api<{ products: Product[] }>("/catalog"),
+    queryKey: ["checkout-catalog", products.map((p) => p.id).join(",")],
+    queryFn: () => api<{ products: Product[] }>("/catalog?ids=" + encodeURIComponent(products.map((p) => p.id).join(","))),
     staleTime: 0,
   });
   const profile = useQuery({

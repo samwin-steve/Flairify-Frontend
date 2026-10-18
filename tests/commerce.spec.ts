@@ -35,7 +35,7 @@ test("direct mock purchase without wardrobe saves order and no payment", async (
   expect(await page.locator("body").innerText()).not.toMatch(
     /\b(?:demo|sample|mock)\b/i,
   );
-  await page.locator(".look-card").first().getByRole("button", { name: /^Shop \d+ items?$/ }).click();
+  await page.locator(".inventory-card").first().getByRole("button", { name: "Buy", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Your checkout" }),
   ).toBeVisible();
@@ -219,7 +219,7 @@ test("expanded catalogue filters departments, shows more, and has valid photos",
 }) => {
   await start(page);
   await expect(page.locator(".inventory-card")).toHaveCount(24);
-  await expect(page.getByRole("status")).toContainText("189 pieces");
+  await expect(page.getByRole("status").filter({ hasText: "Showing" })).toContainText("Showing 24 pieces");
   await page.getByRole("button", { name: "Show more clothes" }).click();
   await expect(page.locator(".inventory-card")).toHaveCount(48);
   await page
@@ -229,7 +229,7 @@ test("expanded catalogue filters departments, shows more, and has valid photos",
   await page
     .getByRole("combobox", { name: "Category", exact: true })
     .selectOption("top");
-  await expect(page.getByRole("status")).toContainText("23 pieces");
+  await expect(page.getByRole("status").filter({ hasText: "Showing" })).toContainText("23 pieces");
   await expect(page.locator(".inventory-card").first()).toContainText("4XL");
   const labels = await page
     .locator(".inventory-card .eyebrow")
