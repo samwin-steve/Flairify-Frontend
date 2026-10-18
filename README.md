@@ -145,3 +145,23 @@ Both on-screen and spoken page changes update the call’s back history. A compl
 ## Previews inside chat
 
 Selecting garments and choosing **See it on me** in Stylist keeps the customer in chat. A compact preview card shows generation progress, the completed image, acceptance/retry/download controls and **Buy** using the same checkout dialog as Fitting Room. Text-chat jobs retain their conversation and message IDs, so previews and regenerated versions reappear with the original recommendation after refresh. The same jobs remain available in Fitting Room. Voice preview messages also render their generated image inline.
+
+## Image delivery
+
+Inventory fetches 24 products per page; Show more loads another page. Category,
+department, availability and search filters apply on the server. Checkout fetches
+only its selected products and rechecks current price/stock. The catalogue polling
+interval is 60 seconds.
+
+Authenticated images start downloading within 300px of the viewport, with at most
+four downloads at once. Product cards use 384px WebP thumbnails; personal photos
+and preview display use 768px WebP. Downloads keep the original files. The existing
+account-scoped memory cache retains images across screens and clears on sign-out
+or deletion. Only catalogue images use private browser caching for five minutes;
+private photos/previews remain no-store. Static photos use Next.js responsive
+image optimization, including the preloaded welcome image.
+
+The backend stores derivatives in the existing private Storage bucket, prepares
+new product thumbnails during indexing and removes derivatives with their source.
+No Redis or new infrastructure is required. See the
+[delivery design and verification](https://github.com/samwin-steve/Flairify-Backend/blob/main/docs/IMAGE_DELIVERY.md).

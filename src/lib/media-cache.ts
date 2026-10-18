@@ -1,8 +1,10 @@
 /** Session-only media URLs. Active consumers pin entries; limits apply to idle entries. */
 export type MediaSnapshot = Readonly<{ url: string; error: boolean }>;
 export const EMPTY_MEDIA: MediaSnapshot = { url: "", error: false };
+export type MediaVariant = "original" | "thumb" | "detail";
 type Entry = {
   key: string;
+  id: string;
   catalog: boolean;
   snapshot: MediaSnapshot;
   users: number;
@@ -28,8 +30,8 @@ export class MediaCache {
     return () => { this.listeners.delete(listener); };
   };
   private notify() { this.listeners.forEach((listener) => listener()); }
-  private key(account: string, id: string, catalog: boolean) {
-    return JSON.stringify([account, catalog ? "catalog" : "private", id]);
+  private key(account: string, id: string, catalog: boolean, variant: MediaVariant) {
+    return JSON.stringify([account, catalog ? "catalog" : "private", id, variant]);
   }
   setAccount(account: string | null) {
     if (account === this.account) return;
@@ -38,16 +40,16 @@ export class MediaCache {
     this.revision++;
     this.notify();
   }
-  snapshot(account: string | null, id: string, catalog = false): MediaSnapshot {
+  snapshot(account: string | null, id: string, catalog = false, variant: MediaVariant = "original"): MediaSnapshot {
     if (!account || account !== this.account) return EMPTY_MEDIA;
-    return this.entries.get(this.key(account, id, catalog))?.snapshot || EMPTY_MEDIA;
+    return this.entries.get(this.key(account, id, catalog, variant))?.snapshot || EMPTY_MEDIA;
   }
-  retain(account: string, id: string, catalog: boolean, load: (signal: AbortSignal) => Promise<Blob>) {
+  retain(account: string, id: string, catalog: boolean, load: (signal: AbortSignal) => Promise<Blob>, variant: MediaVariant = "original") {
     if (account !== this.account) return () => {};
-    const key = this.key(account, id, catalog);
+    const key = this.key(account, id, catalog, variant);
     let entry = this.entries.get(key);
     if (!entry) {
-      entry = { key, catalog, snapshot: EMPTY_MEDIA, users: 0, bytes: 0,
+      entry = { key, id, catalog, snapshot: EMPTY_MEDIA, users: 0, bytes: 0,
         used: Date.now(), controller: new AbortController(), pending: false };
       this.entries.set(key, entry);
     }
@@ -100,8 +102,9 @@ export class MediaCache {
   }
   invalidate(account: string | null, id: string, catalog = false) {
     if (!account || account !== this.account) return;
-    const entry = this.entries.get(this.key(account, id, catalog));
-    if (entry) this.remove(entry);
+    this.entries.forEach((entry) => {
+      if (entry.id === id && entry.catalog === catalog) this.remove(entry);
+    });
     this.revision++;
     this.notify();
   }

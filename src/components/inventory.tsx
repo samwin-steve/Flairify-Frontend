@@ -1,7 +1,7 @@
 "use client";
 import { Skeleton } from "./ui/loading";
-import { useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Search, WandSparkles, MapPin, ShoppingBag, Plus } from "lucide-react";
 import { api } from "@/lib/api";
 import { money } from "@/lib/utils";
@@ -45,26 +45,40 @@ export function Inventory({
     }
   }
   const [query, setQuery] = useState("");
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setSearch(query.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [query]);
   const [category, setCategory] = useState("");
   const [department, setDepartment] = useState("");
   const [visibleCount, setVisibleCount] = useState(24);
   const [availableOnly, setAvailableOnly] = useState(true);
-  const catalog = useQuery({
-    queryKey: ["catalog"],
-    refetchInterval: 15000,
-    queryFn: () => api<{ products: Product[] }>("/catalog"),
+  const catalog = useInfiniteQuery({
+    queryKey: ["catalog", "browse", search, category, department, availableOnly],
+    initialPageParam: "",
+    getNextPageParam: (last: { products: Product[]; next_cursor?: string | null; page_size?: number }) => last.next_cursor || undefined,
+    refetchInterval: 60000,
+    queryFn: ({ pageParam }) => {
+      const params = new URLSearchParams({ page_size: "24", available_only: String(availableOnly) });
+      if (search) params.set("q", search);
+      if (category) params.set("category", category);
+      if (department) params.set("department", department);
+      if (pageParam) params.set("cursor", pageParam);
+      return api<{ products: Product[]; next_cursor?: string | null; page_size?: number }>("/catalog?" + params);
+    },
   });
   const stores = useQuery({
     queryKey: ["stores"],
     queryFn: () => api<{ stores: Shop[] }>("/stores"),
   });
-  const products = (catalog.data?.products || []).filter(
+  const products = (catalog.data?.pages.flatMap((page) => page.products) || []).filter(
     (p) =>
       (!category || p.category === category) &&
       (!department ||
         p.attributes.department === department ||
         p.attributes.department === "unisex") &&
-      (!query ||
+      (!query || catalog.data?.pages[0]?.page_size ||
         `${p.name} ${p.category} ${p.description}`
           .toLowerCase()
           .includes(query.toLowerCase())) &&
@@ -151,10 +165,7 @@ export function Inventory({
         </p>
       )}
       <p className="small-note" role="status">
-        {products.length} pieces · Showing{" "}
-        {Math.min(visibleCount, products.length)}
-        {catalog.data &&
-          ` of ${catalog.data.products.length} catalogue options`}
+        Showing {Math.min(visibleCount, products.length)} pieces
       </p>
       <div className="inventory-grid">
         {products.slice(0, visibleCount).map((p) => {
@@ -247,17 +258,21 @@ export function Inventory({
           );
         })}
       </div>
-      {visibleCount < products.length && (
+      {(visibleCount < products.length || catalog.hasNextPage) && (
         <div className="catalog-load-more">
           <Button
             variant="outline"
-            onClick={() => setVisibleCount((count) => count + 24)}
+            disabled={catalog.isFetchingNextPage}
+            onClick={() => {
+              setVisibleCount((count) => count + 24);
+              if (catalog.hasNextPage) void catalog.fetchNextPage();
+            }}
           >
-            Show more clothes
+            {catalog.isFetchingNextPage ? "Loading clothes…" : "Show more clothes"}
           </Button>
         </div>
       )}
-      {!catalog.isLoading && !products.length && (
+      {!catalog.isLoading && !products.length && !catalog.hasNextPage && (
         <div className="empty-state">
           <h2>No matching items</h2>
           <p>Try another category or search term.</p>

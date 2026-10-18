@@ -112,7 +112,7 @@ test("image downloads show shimmer and failed images offer retry", async ({ page
   let finish!: () => void;
   const gate = new Promise<void>((resolve) => { finish = resolve; });
   let fail = true;
-  await page.route("**/api/media/shared-image", async (route) => {
+  await page.route("**/api/media/shared-image*", async (route) => {
     await gate;
     await route.fulfill(fail ? { status: 500, json: { detail: "Unavailable" } } : { path: "public/images/hero.jpg", contentType: "image/jpeg" });
   });

@@ -1,6 +1,7 @@
 "use client";
 import { Skeleton, LoadingDots } from "./ui/loading";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import Image from "next/image";
 import { WelcomeFairyCursor } from "./welcome-fairy-cursor";
 import { StylistComposer } from "./stylist-composer";
 import { VoiceConversation } from "./voice-conversation";
@@ -900,13 +901,17 @@ function Application() {
               )}
             </div>
             <div className="landing-visual">
-              <img
+              <Image
                 className="hero-photo"
                 src="/images/hero.jpg"
                 alt="Editorial style inspiration: a woman wearing a light blazer"
+                width={1200}
+                height={1677}
+                sizes="(max-width: 760px) 90vw, 560px"
+                preload
               />
               <div className="floating-look">
-                <img src="/images/blazer.jpg" alt="Beige blazer" />
+                <Image src="/images/blazer.jpg" alt="Beige blazer" width={720} height={1008} sizes="100px" />
                 <div>
                   <span>ONE THOUGHTFUL ADDITION</span>
                   <strong>

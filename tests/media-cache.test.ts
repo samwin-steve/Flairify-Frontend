@@ -126,3 +126,18 @@ describe("account-scoped media cache", () => {
     expect(URL.createObjectURL).not.toHaveBeenCalled();
   });
 });
+
+it("keeps thumbnails and original downloads separate and invalidates both", async () => {
+  const cache = new MediaCache();
+  cache.setAccount("variants");
+  const load = vi.fn(async () => new Blob(["pixels"]));
+  const thumb = cache.retain("variants", "image", true, load, "thumb");
+  const original = cache.retain("variants", "image", true, load);
+  await vi.waitFor(() => expect(cache.snapshot("variants", "image", true, "thumb").url).toBeTruthy());
+  expect(load).toHaveBeenCalledTimes(2);
+  expect(cache.snapshot("variants", "image", true).url).not.toBe(cache.snapshot("variants", "image", true, "thumb").url);
+  cache.invalidate("variants", "image", true);
+  expect(cache.snapshot("variants", "image", true)).toBe(EMPTY_MEDIA);
+  expect(cache.snapshot("variants", "image", true, "thumb")).toBe(EMPTY_MEDIA);
+  thumb(); original(); cache.setAccount(null);
+});
