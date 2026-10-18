@@ -287,6 +287,7 @@ function Application() {
       );
     },
     onEnd: (id) => {
+      qc.invalidateQueries({ queryKey: ["jobs"] });
       qc.invalidateQueries({ queryKey: ["conversations"] });
       void api<{ conversations: Conversation[] }>("/conversations")
         .then((data) => {
@@ -1221,6 +1222,7 @@ function Application() {
             </button>
           </div>
         </header>
+        {voice.finishing && <div className="notice" role="status"><LoadingDots /> Call ended. Finishing your request and saving the chat…</div>}
         {profile.isError && (
           <div className="notice error">
             Your session may have expired.
@@ -1466,6 +1468,7 @@ function Application() {
                 {voice.active ? (
                   <VoiceConversation
                     phase={voice.phase}
+                    activity={voice.activity || (jobs.data?.jobs.some((j) => j.id === voice.previewJobId && ["queued", "running"].includes(j.status)) ? "Creating your preview…" : "")}
                     muted={voice.muted}
                     speaking={voice.speaking}
                     seconds={voice.seconds}
@@ -1477,7 +1480,7 @@ function Application() {
                     input={input}
                     onInput={setInput}
                     onSend={() => send()}
-                    busy={busy || !activeHistoryReady}
+                    busy={busy || voice.finishing || !activeHistoryReady}
                     ready={ready}
                     includeWardrobe={includeWardrobe}
                     onWardrobe={setIncludeWardrobe}
@@ -1709,6 +1712,7 @@ function Application() {
           <div className="voice-floating">
             <VoiceConversation
               phase={voice.phase}
+                    activity={voice.activity || (jobs.data?.jobs.some((j) => j.id === voice.previewJobId && ["queued", "running"].includes(j.status)) ? "Creating your preview…" : "")}
               muted={voice.muted}
               speaking={voice.speaking}
               seconds={voice.seconds}

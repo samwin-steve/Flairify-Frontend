@@ -52,6 +52,9 @@ export function useVoiceStylist(callbacks: Callbacks) {
   latest.current = callbacks;
   const current = useRef<Connection | null>(null);
   const [active, setActive] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+  const [activity, setActivity] = useState("");
+  const [previewJobId, setPreviewJobId] = useState<string | null>(null);
   const [phase, setPhase] = useState("Ready to talk");
   const [muted, setMuted] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -75,6 +78,8 @@ export function useVoiceStylist(callbacks: Callbacks) {
     if (current.current === c) {
       current.current = null;
       setActive(false);
+      setFinishing(false);
+      setActivity("");
       setSpeaking(false);
       setMuted(false);
       if (notify && c.id) latest.current.onEnd(c.id);
@@ -83,9 +88,13 @@ export function useVoiceStylist(callbacks: Callbacks) {
 
   function stop(notify = true) {
     const c = current.current;
-    if (!c) return;
+    if (!c || c.ending) return;
+    setActive(false);
+    setSpeaking(false);
+    setFinishing(true);
     c.ending = true;
     c.ready = false;
+    clearInterval(c.timer);
     clearTimeout(c.retryTimer);
     c.stream?.getTracks().forEach((t) => t.stop());
     c.player.stop();
@@ -94,7 +103,10 @@ export function useVoiceStylist(callbacks: Callbacks) {
       c.socket.send(JSON.stringify({ type: "end" }));
       setPhase("Saving your chat…");
       // Let the server persist the final interrupted reply before closing.
-      c.deadline = setTimeout(() => dispose(c, notify), 4000);
+      c.deadline = setTimeout(() => {
+        setError("The call ended. Pending work may still be finishing; check this chat and Fitting Room shortly.");
+        dispose(c, notify);
+      }, 100000);
       if (!notify) dispose(c, false);
     } else dispose(c, notify);
   }
@@ -253,7 +265,10 @@ export function useVoiceStylist(callbacks: Callbacks) {
           latest.current.onOutfits(data.outfits);
         else if (data.type === "selection")
           latest.current.onSelection(data.pieces, data.adjustments || []);
-        else if (data.type === "preview") latest.current.onPreview(data.job);
+        else if (data.type === "preview") {
+          setPreviewJobId(data.job.id);
+          latest.current.onPreview(data.job);
+        }
         else if (data.type === "navigation") {
           if (
             !isVoiceDestination(data.destination) ||
@@ -268,7 +283,8 @@ export function useVoiceStylist(callbacks: Callbacks) {
         } else if (data.type === "turn") {
           latest.current.onTurn(data.conversation);
           if (!c.ending) setPhase("Listening");
-        } else if (data.type === "status") setPhase(data.message);
+        } else if (data.type === "activity") setActivity(data.message);
+        else if (data.type === "status") setPhase(data.message);
         else if (data.type === "notice") setError(data.message);
         else if (data.type === "interrupted") {
           c.player.stop();
@@ -300,6 +316,7 @@ export function useVoiceStylist(callbacks: Callbacks) {
   async function start(options: Options) {
     if (current.current) return;
     setError("");
+    setPreviewJobId(null);
     if (!navigator.mediaDevices?.getUserMedia || !window.AudioContext) {
       setError(
         "Voice needs a browser with microphone access. You can still type here.",
@@ -413,6 +430,9 @@ export function useVoiceStylist(callbacks: Callbacks) {
 
   return {
     active,
+    finishing,
+    activity,
+    previewJobId,
     phase,
     muted,
     speaking,

@@ -1,9 +1,11 @@
 "use client";
 
+import { LoadingDots } from "./ui/loading";
 import { Mic, MicOff, PhoneOff, Sparkles } from "lucide-react";
 
 export function VoiceConversation({
   phase,
+  activity,
   muted,
   speaking,
   seconds,
@@ -11,36 +13,45 @@ export function VoiceConversation({
   onEnd,
 }: {
   phase: string;
+  activity?: string;
   muted: boolean;
   speaking: boolean;
   seconds: number;
   onMute: () => void;
   onEnd: () => void;
 }) {
-  const status = muted
+  const connecting = /^(Connecting|Reconnecting)/.test(phase);
+  const working = !!activity || connecting || (!speaking &&
+    !["Listening", "Ready to talk", "Allow your microphone to start"].includes(phase));
+  const status = activity || (connecting ? phase : muted
     ? "Your microphone is off"
     : speaking
       ? "Your stylist is speaking"
-      : phase;
+      : phase);
   return (
     <section
-      className={"voice-conversation" + (speaking ? " speaking" : "")}
+      className={"voice-conversation" + (speaking ? " speaking" : "") + (working ? " voice-working" : "")}
       aria-label="Voice conversation"
     >
       <div className="voice-orb" aria-hidden="true">
-        <Sparkles size={25} />
+        {working ? <LoadingDots /> : <Sparkles size={25} />}
       </div>
       <div className="voice-copy">
         <strong role="status" aria-live="polite">
           {status}
+          {working && <span className="voice-progress" aria-hidden="true"><span /></span>}
         </strong>
         <span>
-          {muted
+          {connecting
+            ? "Setting up live audio…"
+            : activity
+            ? "You can end the call. This work will continue."
+            : muted
             ? "Unmute whenever you’re ready."
             : "Just talk. You can interrupt me anytime."}
         </span>
         <small>
-          Transcript saved · {Math.floor(seconds / 60)}:
+          Voice chat · {Math.floor(seconds / 60)}:
           {String(seconds % 60).padStart(2, "0")}
         </small>
       </div>
