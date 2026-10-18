@@ -2,6 +2,7 @@
 import { Skeleton, LoadingDots } from "./ui/loading";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { WelcomeFairyCursor } from "./welcome-fairy-cursor";
 import { StylistComposer } from "./stylist-composer";
 import { VoiceConversation } from "./voice-conversation";
@@ -49,6 +50,7 @@ import {
   MapPin,
   Menu,
   MessageCircle,
+  Network,
   Plus,
   Search,
   Send,
@@ -95,6 +97,9 @@ import { Inventory } from "./inventory";
 import { Analytics } from "./analytics";
 import { Checkout, Orders } from "./checkout";
 import { ShoppingBag, Store as SellerIcon } from "lucide-react";
+const BehindTheScenes = dynamic(() => import("./behind-the-scenes"), {
+  loading: () => <main className="page-content"><LoadingDots /> Loading the journey…</main>,
+});
 import {
   pieceKey,
   productPiece,
@@ -113,6 +118,7 @@ const navigation = [
   { id: "fitting", label: "Fitting Room", icon: WandSparkles },
   { id: "orders", label: "My Orders", icon: ShoppingBag },
   { id: "analytics", label: "Analytics", icon: ChartNoAxesCombined },
+  { id: "behind-scenes", label: "Behind the scenes!", icon: Network },
   { id: "admin", label: "Seller Studio", icon: SellerIcon },
 ];
 const prompts = [
@@ -1620,6 +1626,7 @@ function Application() {
           />
         )}
         {page === "analytics" && <Analytics />}
+        {page === "behind-scenes" && <BehindTheScenes />}
         {page === "orders" && <Orders onShop={() => changePage("inventory")} />}
         {page === "fitting" && (
           <FittingRoom
