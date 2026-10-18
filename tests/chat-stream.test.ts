@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { consumeChatStream } from "../src/lib/chat-stream";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { consumeChatStream, streamChat } from "../src/lib/chat-stream";
 const done = { conversation: { id: "c1", messages: [] }, outfits: [] };
 function stream(text: string, chunk = 1) {
   const bytes = new TextEncoder().encode(text);
@@ -12,6 +12,28 @@ function stream(text: string, chunk = 1) {
   });
 }
 describe("chat streaming protocol", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each([422, 503])("shows safety refusal or retry messages before streaming (%s), and permits the next request", async (status) => {
+    const message = status === 422
+      ? "I can help with clothes and styling, but I can't help with that request. Try asking for a look or styling advice."
+      : "I couldn't check that request safely. Please try again in a moment.";
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(Response.json({ detail: message }, { status }))
+      .mockResolvedValueOnce(new Response(
+        stream("event: done\ndata: " + JSON.stringify(done) + "\n\n"),
+        { headers: { "Content-Type": "text/event-stream" } },
+      ));
+    vi.stubGlobal("fetch", fetcher);
+    const onEvent = vi.fn();
+    await expect(streamChat({ message: "first request" }, onEvent, new AbortController().signal))
+      .rejects.toThrow(message);
+    expect(onEvent).not.toHaveBeenCalled();
+    await expect(streamChat({ message: "A comfortable office outfit" }, onEvent, new AbortController().signal))
+      .resolves.toEqual(done);
+    expect(onEvent).toHaveBeenCalledExactlyOnceWith({ type: "done", result: done });
+  });
+
   it("decodes split Unicode, CRLF frames and keepalives", async () => {
     const events: any[] = [];
     const result = await consumeChatStream(
